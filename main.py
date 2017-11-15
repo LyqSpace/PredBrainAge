@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.optim as optim
+import torch.backends.cudnn as cudnn
 
 from src.Net import Net
 from src.Database import Database
@@ -13,31 +14,30 @@ def train_model(net, database):
     criterion = nn.MSELoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    for epoch in range(10):
+    for epoch in range(2):
 
-        running_loss = 0
-        while database.has_next():
+        database.reset_training_index()
 
-            img_name, img_tensor, age_tensor = database.load_data_next()
+        while database.has_training_next():
+
+            img_name, img_tensor, age_tensor = database.load_training_data_next()
             img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
-            print(img_tensor.size())
-            print(img_tensor.type())
-            print(age_tensor.type())
-            img_tensor = Variable(img_tensor)
-            age_tensor = Variable(age_tensor.float())
-
-            optimizer.zero_grad()
+            img_tensor = Variable(img_tensor.cuda())
+            age_tensor = age_tensor.float()
+            age_tensor = Variable(age_tensor.cuda())
 
             output = net(img_tensor)
             print(output)
+
+            optimizer.zero_grad()
             loss = criterion(output, age_tensor)
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.data[0]
-            if database.get_index() % 1 == 0:
-                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_index(), running_loss))
-                running_loss = 0
+            if database.get_training_index() % 1 == 0:
+                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), loss.data[0]))
+
+            break
 
 
 def main():
@@ -47,9 +47,11 @@ def main():
 
     print('Construct net.')
     net = Net()
+    net.cuda()
 
     print('Start training.')
     train_model(net, database)
 
 if __name__ == '__main__':
+    cudnn.enabled = False
     main()
