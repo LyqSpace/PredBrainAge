@@ -13,7 +13,7 @@ def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.SGD(net.parameters(), lr=1e-5, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=1e-7, momentum=0.9)
 
     for epoch in range(100):
 
@@ -42,8 +42,8 @@ def train_model(net, database):
             if database.get_training_index() % 1 == 0:
                 print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), loss.data[0]))
 
-            if database.get_training_index() % 100 == 99:
-                break
+            # if database.get_training_index() % 100 == 99:
+            #     break
 
         torch.save(net, 'net.pkl')
 
@@ -70,4 +70,4 @@ def main(pre_train=False):
 
 if __name__ == '__main__':
     cudnn.enabled = False
-    main(pre_train=False)
+    main(pre_train=True)
