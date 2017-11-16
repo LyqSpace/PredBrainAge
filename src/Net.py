@@ -9,19 +9,21 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv3d(1, 3, (3, 3, 3))
-        self.conv2 = nn.Conv3d(3, 6, (3, 3, 3))
+        self.conv2 = nn.Conv3d(3, 6, (5, 5, 3))
 
-        self.fc1 = nn.Linear(6 * 2 * 2 * 2, 10)
-        self.fc2 = nn.Linear(10, 1)
+        self.fc1 = nn.Linear(6 * 4 * 4 * 3, 100)
+        self.fc2 = nn.Linear(100, 10)
+        self.fc3 = nn.Linear(10, 1)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        x = F.max_pool3d(x, (11, 11, 7))
+        x = F.max_pool3d(x, (5, 5, 4))
         x = F.relu(self.conv2(x))
-        x = F.max_pool3d(x, (10, 10, 9))
+        x = F.max_pool3d(x, (5, 5, 5))
         x = x.view(1, self.num_flat_features(x))
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
 
         return x
 
@@ -37,6 +39,6 @@ if __name__ == '__main__':
     cudnn.enabled = False
     net = Net()
     net.cuda()
-    input = Variable(torch.randn(1, 1, 256, 256, 150).cuda())
+    input = Variable(torch.randn(1, 1, 128, 128, 75).cuda())
     output = net(input)
     print(output)
