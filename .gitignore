@@ -4,3 +4,5 @@ data
 *.pyc
 *.pkl
 *.pkl.backup
+training_name_list.txt
+test_name_list.txt

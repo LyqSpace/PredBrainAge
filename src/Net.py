@@ -8,18 +8,21 @@ class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv3d(1, 3, (3, 3, 3))
+        self.conv1 = nn.Conv3d(1, 3, (5, 5, 3))
         self.conv2 = nn.Conv3d(3, 6, (5, 5, 3))
+        self.conv3 = nn.Conv3d(6, 12, (5, 5, 3))
 
-        self.fc1 = nn.Linear(6 * 4 * 4 * 3, 100)
+        self.fc1 = nn.Linear(12 * 4 * 4 * 2, 100)
         self.fc2 = nn.Linear(100, 10)
         self.fc3 = nn.Linear(10, 1)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
-        x = F.max_pool3d(x, (5, 5, 4))
+        x = F.max_pool3d(x, (3, 3, 3))
         x = F.relu(self.conv2(x))
-        x = F.max_pool3d(x, (5, 5, 5))
+        x = F.max_pool3d(x, (3, 3, 3))
+        x = F.relu(self.conv3(x))
+        x = F.max_pool3d(x, (2, 2, 2))
         x = x.view(1, self.num_flat_features(x))
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))

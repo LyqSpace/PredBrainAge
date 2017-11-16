@@ -25,31 +25,70 @@ class Database:
         self._dataset_path = None
         self._data_info_df = None
 
-    def load_database(self, dataset_name, shape=None):
+    def load_database(self, dataset_name, shape=None, resample=True):
 
         self._dataset_name = dataset_name
         self._dataset_path = './data/' + dataset_name
         self._shape = shape
 
         if dataset_name == 'IXI-T1':
-            data_name_list = os.listdir(self._dataset_path)
 
             xls_file = pd.read_excel(self._dataset_path + '.xls')
             self._data_info_df = xls_file.loc[:, ['IXI_ID', 'AGE']]
             self._data_info_df.dropna(how='any', inplace=True)
             self._data_info_df.index = self._data_info_df['IXI_ID']
 
-            data_size = len(data_name_list)
-            self._training_index = 0
-            self._training_data_size = int(1 * data_size)
-            self._training_name_list = random.sample(data_name_list, self._training_data_size)
+            if resample is True:
+                data_name_list = os.listdir(self._dataset_path)
 
-            self._test_index = 0
-            self._test_name_list = list(set(data_name_list) - (set(self._training_name_list)))
-            self._test_data_size = len(self._test_name_list)
+                data_size = len(data_name_list)
+                self._training_index = 0
+                self._training_data_size = int(0.9 * data_size)
+                self._training_name_list = random.sample(data_name_list, self._training_data_size)
+
+                self._test_index = 0
+                self._test_name_list = list(set(data_name_list) - (set(self._training_name_list)))
+                self._test_data_size = len(self._test_name_list)
+
+                self.save_name_list()
+            else:
+                self.read_name_list()
+                # print('Training name list: ', self._training_name_list)
+                # print('Test name list: ', self._test_name_list)
+
+                self._training_index = 0
+                self._training_data_size = len(self._training_name_list)
+
+                self._test_index = 0
+                self._test_data_size = len(self._test_name_list)
+                
             self._dataset_loaded = True
         else:
             raise Exception(dataset_name + ' dataset is not found.')
+
+    def save_name_list(self):
+        file = open('training_name_list.txt', 'w')
+        for name in self._training_name_list:
+            print(name, file=file)
+        file.close()
+
+        file = open('test_name_list.txt', 'w')
+        for name in self._test_name_list:
+            print(name, file=file)
+        file.close()
+
+    def read_name_list(self):
+        file = open('training_name_list.txt', 'r')
+        self._training_name_list = []
+        for line in file:
+            self._training_name_list.append(line.strip())
+        file.close()
+
+        file = open('test_name_list.txt', 'r')
+        self._test_name_list = []
+        for line in file:
+            self._test_name_list.append(line.strip())
+        file.close()
 
     def get_training_data_size(self):
         return self._training_data_size

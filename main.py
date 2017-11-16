@@ -42,8 +42,8 @@ def train_model(net, database):
             if database.get_training_index() % 1 == 0:
                 print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), loss.data[0]))
 
-            # if database.get_training_index() % 100 == 99:
-            #     break
+            if database.get_training_index() % 100 == 99:
+                break
 
         torch.save(net, 'net.pkl')
 
@@ -52,12 +52,12 @@ def train_model(net, database):
         print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_size, running_loss))
 
 
-def main():
+def main(pre_train=False):
     print('Load database.')
     database = Database()
-    database.load_database('IXI-T1', (128, 128, 75))
+    database.load_database('IXI-T1', shape=(128, 128, 75), resample=False)
 
-    if os.path.exists(r'net.pkl'):
+    if pre_train and os.path.exists(r'net.pkl'):
         print('Construct net. Load from pkl file.')
         net = torch.load('net.pkl')
     else:
@@ -70,4 +70,4 @@ def main():
 
 if __name__ == '__main__':
     cudnn.enabled = False
-    main()
+    main(pre_train=False)
