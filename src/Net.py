@@ -17,9 +17,10 @@ class Net(nn.Module):
         self.conv3 = nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 4))
         self.conv4 = nn.Conv3d(conv3_layers, conv4_layers, (4, 4, 4))
 
-        self.fc1 = nn.Linear(conv4_layers * 3 * 3 * 2, 4096)
-        self.fc2 = nn.Linear(4096, 1024)
-        self.fc3 = nn.Linear(1024, 1)
+        self.fc1 = nn.Linear(conv4_layers * 3 * 3 * 2, 1024)
+        self.fc2 = nn.Linear(1024, 256)
+        self.fc3 = nn.Linear(256, 64)
+        self.fc4 = nn.Linear(64, 1)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -33,7 +34,8 @@ class Net(nn.Module):
         x = x.view(1, self.num_flat_features(x))
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = F.relu(self.fc3(x))
+        x = self.fc4(x)
 
         return x
 

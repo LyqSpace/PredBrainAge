@@ -13,12 +13,13 @@ def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.SGD(net.parameters(), lr=1e-7, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=1e-2, momentum=0.9)
 
     for epoch in range(100):
 
         database.reset_training_index()
         running_loss = 0
+        data_size = 0
 
         while database.has_training_next():
 
@@ -30,24 +31,27 @@ def train_model(net, database):
             age_tensor = Variable(age_tensor.cuda())
 
             output = net(img_tensor)
-            print('output: ', output)
-            print('target: ', age_tensor)
+            # print('output: ', output)
+            # print('target: ', age_tensor)
             optimizer.zero_grad()
             loss = criterion(output, age_tensor)
             loss.backward()
             optimizer.step()
 
             running_loss += loss.data[0]
+            data_size += 1
 
-            if database.get_training_index() % 1 == 0:
-                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), loss.data[0]))
+            if data_size % 10 == 9:
+                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), running_loss / data_size))
 
-            # if database.get_training_index() % 100 == 99:
+            if data_size % 20 == 19:
+                torch.save(net, 'net.pkl')
+
+            # if data_size == 50:
             #     break
 
         torch.save(net, 'net.pkl')
 
-        data_size = database.get_training_data_size()
         running_loss /= data_size
         print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_size, running_loss))
 
