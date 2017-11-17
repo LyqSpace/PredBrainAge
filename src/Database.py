@@ -1,4 +1,5 @@
 import nilearn.image as ni_img
+from nibabel.affines import apply_affine
 import pandas as pd
 import numpy as np
 import os
@@ -28,7 +29,7 @@ class Database:
     def load_database(self, dataset_name, shape=None, resample=True):
 
         self._dataset_name = dataset_name
-        self._dataset_path = './data/' + dataset_name
+        self._dataset_path = '../data/' + dataset_name
         self._shape = shape
 
         if dataset_name == 'IXI-T1':
@@ -133,7 +134,16 @@ class Database:
                     old_x = int(x / resize_rate[0])
                     old_y = int(y / resize_rate[1])
                     old_z = int(z / resize_rate[2])
-                    new_img[x, y, z] = img[old_x, old_y, old_z]
+                    # data = 1.0/8 * (img[old_x, old_y, old_z] + img[old_x, old_y, old_z+1] +
+                    #                 img[old_x, old_y+1, old_z] + img[old_x, old_y+1, old_z+1] +
+                    #                 img[old_x+1, old_y, old_z] + img[old_x+1, old_y, old_z+1] +
+                    #                 img[old_x+1, old_y+1, old_z] + img[old_x+1, old_y+1, old_z+1])
+                    data = img[old_x, old_y, old_z]
+                    new_img[x, y, z] = data
+        # print(new_img.mean())
+        # print(new_img.max())
+        # print(new_img.min())
+        # new_img = new_img - new_img.mean()
         return new_img
 
     def load_data(self, img_name):
@@ -178,4 +188,5 @@ class Database:
 if __name__ == '__main__':
     database = Database()
     database.load_database('IXI-T1', (128, 128, 75))
+    database.load_training_data_next()
     database.load_training_data_next()

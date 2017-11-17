@@ -2,18 +2,40 @@ import os
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
+import torch.nn.init as init
 import torch.optim as optim
+import torch.optim.lr_scheduler as lr_scheduler
 import torch.backends.cudnn as cudnn
 
 from src.Net import Net
 from src.Database import Database
 
 
+def init_net_params(net):
+
+    print('Initialize net parameters by xavier_uniform.')
+
+    for m in net.modules():
+
+        if isinstance(m, nn.Conv2d):
+            init.xavier_uniform(m.weight)
+            init.constant(m.bias, 0)
+
+        elif isinstance(m, nn.BatchNorm2d):
+            init.constant(m.weight, 1)
+            init.constant(m.bias, 0)
+
+        elif isinstance(m, nn.Linear):
+            init.normal(m.weight, std=1e-3)
+            init.constant(m.bias, 0)
+
+
 def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.SGD(net.parameters(), lr=1e-2, momentum=0.9)
+    optimizer = optim.RMSprop(net.parameters(), lr=1e-4)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5)
 
     for epoch in range(100):
 
@@ -36,6 +58,7 @@ def train_model(net, database):
             optimizer.zero_grad()
             loss = criterion(output, age_tensor)
             loss.backward()
+            scheduler.step()
             optimizer.step()
 
             running_loss += loss.data[0]
@@ -67,6 +90,7 @@ def main(pre_train=False):
     else:
         print('Construct net. Create a new network.')
         net = Net()
+        # init_net_params(net)
     net.cuda()
 
     print('Start training.')
