@@ -34,8 +34,8 @@ def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=1e-4)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.5)
+    optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.9)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=1500, gamma=0.5)
 
     for epoch in range(100):
 
