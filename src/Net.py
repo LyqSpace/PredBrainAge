@@ -44,9 +44,8 @@ if __name__ == '__main__':
     import torch.backends.cudnn as cudnn
     cudnn.enabled = False
     net = Net()
+    print(net)
     net.cuda()
     input = Variable(torch.randn(1, 1, 128, 128, 75).cuda())
     output = net(input)
     print(output)
-    import time
-    time.sleep(1e4)

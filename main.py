@@ -30,12 +30,45 @@ def init_net_params(net):
             init.constant(m.bias, 0)
 
 
+def test_model(net, database):
+
+    print("Test the net.")
+
+    criterion = nn.MSELoss()
+    database.reset_test_index()
+    running_loss = 0
+    data_size = 0
+
+    while database.has_test_next():
+
+        img_name, img_tensor, age_tensor = database.load_test_data_next()
+        # print(database.get_test_index(), img_name)
+        img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
+        img_tensor = Variable(img_tensor.cuda())
+        age_tensor = age_tensor.float()
+        age_tensor = Variable(age_tensor.cuda())
+
+        output = net(img_tensor)
+        # print('output: ', output)
+        # print('target: ', age_tensor)
+        loss = criterion(output, age_tensor)
+
+        running_loss += loss.data[0] ** 0.5
+        data_size += 1
+
+        if data_size % 10 == 9:
+            print('Test size: %d, MAE: %.3f' % (data_size, running_loss / data_size))
+
+    running_loss /= data_size
+    print('Test size: %d, MAE: %.3f' % (data_size, running_loss))
+
+
 def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.9)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=1500, gamma=0.5)
+    optimizer = optim.RMSprop(net.parameters(), lr=1e-6, alpha=0.9)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.5)
 
     for epoch in range(100):
 
@@ -75,6 +108,8 @@ def train_model(net, database):
 
         torch.save(net, 'net.pkl')
 
+        test_model(net, database)
+
         running_loss /= data_size
         print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_size, running_loss))
 
@@ -94,6 +129,7 @@ def main(pre_train=False):
     net.cuda()
 
     print('Start training.')
+    test_model(net, database)
     train_model(net, database)
 
 if __name__ == '__main__':
