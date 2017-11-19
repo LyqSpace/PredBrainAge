@@ -71,6 +71,9 @@ def train_model(net, database):
             running_loss += loss.data[0]
             total_loss += loss.data[0]
 
+            if loss.data[0] > 100:
+                print(loss.data[0])
+                
             if data_count % output_step == output_step - 1:
                 print('Epoch: %d, Data Size: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_count,
                                                                                   total_loss / data_count,
