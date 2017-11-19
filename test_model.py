@@ -54,7 +54,7 @@ def test_model(net, database):
 
 
 def main():
-    test_mode = False
+    test_mode = True
     resample = False
     print('Load database. Test mode %s, Resample %s' % (test_mode, resample))
     database = Database()
