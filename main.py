@@ -96,5 +96,5 @@ def main(pre_train=False):
     train_model(net, database)
 
 if __name__ == '__main__':
-    cudnn.enabled = False
+    # cudnn.enabled = False
     main(pre_train=True)

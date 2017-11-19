@@ -64,8 +64,8 @@ class Net(nn.Module):
 
 
 if __name__ == '__main__':
-    import torch.backends.cudnn as cudnn
-    cudnn.enabled = False
+    # import torch.backends.cudnn as cudnn
+    # cudnn.enabled = False
     net = Net()
     print(net)
     net.cuda()
