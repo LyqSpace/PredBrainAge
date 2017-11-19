@@ -39,7 +39,7 @@ def test_model(net, database):
             age_sum += output
             training_data_count += 1
 
-            print('    Count: %d, id: %d, Target Age: %.3f, Mean Age: %.3f' % (training_data_count,
+            print('    Count: %d, id: %s, Target Age: %.3f, Mean Age: %.3f' % (training_data_count,
                                                                                img_name,
                                                                                target_age,
                                                                                age_sum / training_data_count))
