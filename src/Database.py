@@ -113,8 +113,8 @@ class Database:
                 min_diff = abs(target_age - self._all_training_data_list[i][1])
                 pos = i
 
-        left_bound = max(pos - 30, 0)
-        right_bound = min(pos + 30, self._all_training_data_size)
+        left_bound = max(pos - 50, 0)
+        right_bound = min(pos + 50, self._all_training_data_size)
 
         self._training_name_list = random.sample(self._all_training_data_list[left_bound:right_bound],
                                                  training_data_size)

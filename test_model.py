@@ -11,7 +11,7 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 20
+    training_data_size = 10
 
     while database.has_test_next():
 
