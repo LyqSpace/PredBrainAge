@@ -53,7 +53,7 @@ def train_model(net, database):
             data_count += 1
 
             img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_pair_next()
-            print(database.get_training_pair_index()+1, img_name1, img_name2)
+            print(database.get_training_pair_index(), img_name1, img_name2)
 
             img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).float().cuda())
             img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).float().cuda())
