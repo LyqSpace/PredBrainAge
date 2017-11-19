@@ -20,20 +20,31 @@ def get_user_params():
                         dest='st_index',
                         type=int,
                         default=0,
-                        help='The beginning index of the training pair list in training process.')
+                        help='The beginning index of the training pair list in the training process.')
+        opts.add_option('--st_lr',
+                        dest='st_lr',
+                        type=float,
+                        default=1e-4,
+                        help='The begining learning rate in the training process.')
 
         options, args = opts.parse_args()
         st_index = options.st_index
+        st_lr = options.st_lr
 
         err_messages = []
         check_opts = True
-        if isinstance(st_index, int) is False or st_index < 0:
+        if st_index < 0:
             err_messages.append('st_index must be a non-negative integer.')
+            check_opts = False
+
+        if st_lr <= 0 or st_lr >=1:
+            err_messages.append('st_lr must be a float in (0,1).')
             check_opts = False
 
         if check_opts:
             user_params = {
-                'st_index': st_index
+                'st_index': st_index,
+                'st_lr': st_lr
             }
             return user_params
         else:
@@ -66,11 +77,11 @@ def init_net_params(net):
             init.constant(m.bias, 0)
 
 
-def train_model(net, database, st_index=0):
+def train_model(net, database, st_index, st_lr):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=0.00005, alpha=0.9)
+    optimizer = optim.RMSprop(net.parameters(), lr=st_lr, alpha=0.9)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
     output_step = 10
 
@@ -128,8 +139,8 @@ def train_model(net, database, st_index=0):
         print('=== Epoch: %d, Data size: %d, Average loss: %.3f' % (epoch, data_count, running_loss))
 
 
-def main(pre_train=False, st_index=0):
-
+def main(pre_train, st_index, st_lr):
+    print(st_lr)
     test_mode = False
     resample = False
     print('Load database. Test mode %s, Resample %s' % (test_mode, resample))
@@ -146,11 +157,13 @@ def main(pre_train=False, st_index=0):
     net.cuda()
 
     print('Start training.')
-    train_model(net, database, st_index)
+    train_model(net, database, st_index, st_lr)
 
 if __name__ == '__main__':
     # cudnn.enabled = False
 
     user_params = get_user_params()
     if user_params is not None:
-        main(pre_train=True, st_index=user_params['st_index'])
+        main(pre_train=True,
+             st_index=user_params['st_index'],
+             st_lr=user_params['st_lr'])
