@@ -1,5 +1,6 @@
 .idea
-data
+data/IXI-T1/
+data/IXI-T1-unused/
 
 *.pyc
 *.pkl

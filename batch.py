@@ -8,9 +8,9 @@ import os
 #     print(name, file=f)
 # f.close()
 
-f = open('unused_list.txt', 'r')
+f = open('../data/IXI-T1-unused_list.txt', 'r')
 
 for line in f:
-    subprocess.call('rm ./data/tmp/' + line.strip(), shell=True)
+    subprocess.call('rm ../data/tmp/' + line.strip(), shell=True)
 
 f.close()

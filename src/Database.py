@@ -29,7 +29,7 @@ class Database:
     def load_database(self, dataset_name, shape=None, resample=True):
 
         self._dataset_name = dataset_name
-        self._dataset_path = './data/' + dataset_name
+        self._dataset_path = '../data/' + dataset_name
         self._shape = shape
 
         if dataset_name == 'IXI-T1':
