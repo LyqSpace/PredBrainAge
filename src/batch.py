@@ -95,7 +95,7 @@ def read_list(file_name):
 
 
 def delete_data(data_id):
-    the_list = read_list('training_pair_list.txt')
+    the_list = read_list('../training_pair_list.txt')
     new_list = []
     count = 0
     for i in range(len(the_list)):
@@ -107,9 +107,9 @@ def delete_data(data_id):
         else:
             count += 1
     print(count)
-    save_list(new_list, 'training_pair_list.txt')
+    save_list(new_list, '../training_pair_list.txt')
 
-    the_list = read_list('training_name_list.txt')
+    the_list = read_list('../training_name_list.txt')
     new_list = []
     count = 0
     for i in range(len(the_list)):
@@ -118,7 +118,7 @@ def delete_data(data_id):
         else:
             count += 1
     print(count)
-    save_list(new_list, 'training_name_list.txt')
+    save_list(new_list, '../training_name_list.txt')
 
 if __name__ == '__main__':
     delete_data(533)
