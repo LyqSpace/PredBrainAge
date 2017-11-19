@@ -34,8 +34,8 @@ def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=1e-5, alpha=0.9)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=1500, gamma=0.5)
+    optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.9)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
 
     for epoch in range(100):
 
@@ -64,7 +64,7 @@ def train_model(net, database):
             data_size += 1
 
             if data_size % 11 == 10:
-                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, database.get_training_index(), running_loss / data_size))
+                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, data_size, running_loss / data_size))
 
             if data_size % 21 == 20:
                 torch.save(net, 'net.pkl')
