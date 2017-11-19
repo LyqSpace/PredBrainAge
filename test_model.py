@@ -35,6 +35,11 @@ def test_model(net, database):
             # print('output: ', output)
             # print('target: ', age_tensor)
             age_diff = output.data.cpu().numpy()[0][0]
+
+            output2 = net(training_img_tensor, img_tensor)
+            age_diff2 = output2.data.cpu().numpy()[0][0]
+            print(age_diff, age_diff2)
+
             pred_age = age_diff + training_age
             if pred_age < 10 or pred_age > 95:
                 print('Odd res !!')
