@@ -34,15 +34,15 @@ def train_model(net, database):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.9)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=database.get_training_pair_size(), gamma=0.5)
+    optimizer = optim.RMSprop(net.parameters(), lr=0.00005, alpha=0.9)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
     output_step = 10
 
     for epoch in range(100):
 
         database.set_training_pair_index()
         if epoch == 0:
-            database.set_training_pair_index(4300)
+            database.set_training_pair_index(15300)
 
         running_loss = 0
         total_loss = 0

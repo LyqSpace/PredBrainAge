@@ -11,7 +11,7 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 100
+    training_data_size = 200
 
     while database.has_test_next():
 
@@ -52,16 +52,16 @@ def test_model(net, database):
     print('Test size: %d, MAE: %.3f' % (test_data_count, total_loss))
 
 
-def main(pre_train=False):
+def main():
     print('Load database.')
     database = Database()
     database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test=True, resample=False)
 
-    if pre_train and os.path.exists(r'net.pkl'):
-        print('Construct net. Load from pkl file.')
-        net = torch.load('net.pkl')
+    if os.path.exists(r'net.pkl.backup'):
+        print('Construct net. Load from pkl.backup file.')
+        net = torch.load('net.pkl.backup')
     else:
-        raise Exception('Test the net need net.kpl file.')
+        raise Exception('Test the net need net.kpl.backup file.')
 
     net.cuda()
 
@@ -70,5 +70,5 @@ def main(pre_train=False):
 
 
 if __name__ == '__main__':
-    cudnn.enabled = False
-    main(pre_train=True)
+    # cudnn.enabled = False
+    main()
