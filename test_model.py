@@ -42,11 +42,13 @@ def test_model(net, database):
 
             pred_age = age_diff + training_age
             if pred_age < 10 or pred_age > 95:
-                print('Odd res !!')
+                print('Odd res. Pred age: %.3f' % pred_age)
+                continue
+
             age_sum += pred_age
             training_data_count += 1
 
-            print('    Count: %d, Name: %s, Age: %.3f, Diff %.3f, Pred Age: %.3f, Mean Res: %.3f' % (training_data_count,
+            print('    Count: %d, Name: %s, Age: %.3f, Diff %.3f, Pred age: %.3f, Mean res: %.3f' % (training_data_count,
                                                                                                      training_img_name,
                                                                                                      training_age,
                                                                                                      age_diff,
