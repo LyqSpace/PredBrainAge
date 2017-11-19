@@ -167,3 +167,5 @@ if __name__ == '__main__':
         main(pre_train=True,
              st_index=user_params['st_index'],
              st_lr=user_params['st_lr'])
+    else:
+        raise Exception('User params is wrong.')
