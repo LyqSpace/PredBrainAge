@@ -113,21 +113,16 @@ class Database:
                 min_diff = abs(target_age - self._all_training_data_list[i][1])
                 pos = i
 
-        left_id = pos - 1
-        right_id = pos
-        self._training_data_index = 0
-        self._training_data_size = 0
-        self._training_name_list = []
-        while self._training_data_size < training_data_size:
-            if left_id >= 0:
-                self._training_name_list.append(self._all_training_data_list[left_id][0])
-                self._training_data_size += 1
-                left_id -= 1
-            if right_id < self._all_training_data_size:
-                self._training_name_list.append(self._all_training_data_list[right_id][0])
-                self._training_data_size += 1
-                right_id += 1
+        left_bound = max(pos - 30, 0)
+        right_bound = min(pos + 30, self._all_training_data_size)
 
+        tmp_list = []
+        for i in range(left_bound, right_bound):
+            tmp_list.append(self._all_training_data_list[i][0])
+
+        self._training_name_list = random.sample(tmp_list, training_data_size)
+        self._training_data_size = len(self._training_name_list)
+        self._training_data_index = 0
         self._test_loaded = True
 
     def save_list(self, the_list, file_name):
