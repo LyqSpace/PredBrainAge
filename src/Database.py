@@ -1,5 +1,3 @@
-import nilearn.image as ni_img
-from nibabel.affines import apply_affine
 import pandas as pd
 import numpy as np
 import os
@@ -131,38 +129,12 @@ class Database:
         else:
             return False
 
-    def resize_img(self, img):
-        old_shape = img.shape
-        resize_rate = []
-        for i in range(3):
-            resize_rate.append(self._shape[i] * 1.0 / old_shape[i])
-
-        new_img = np.zeros(shape=self._shape, dtype='int16')
-        for x in range(self._shape[0]):
-            for y in range(self._shape[1]):
-                for z in range(self._shape[2]):
-                    old_x = int(x / resize_rate[0])
-                    old_y = int(y / resize_rate[1])
-                    old_z = int(z / resize_rate[2])
-                    # data = 1.0/8 * (img[old_x, old_y, old_z] + img[old_x, old_y, old_z+1] +
-                    #                 img[old_x, old_y+1, old_z] + img[old_x, old_y+1, old_z+1] +
-                    #                 img[old_x+1, old_y, old_z] + img[old_x+1, old_y, old_z+1] +
-                    #                 img[old_x+1, old_y+1, old_z] + img[old_x+1, old_y+1, old_z+1])
-                    data = img[old_x, old_y, old_z]
-                    new_img[x, y, z] = data
-        # print(new_img.mean())
-        # print(new_img.max())
-        # print(new_img.min())
-        # new_img = new_img - new_img.mean()
-        return new_img
-
     def load_data(self, img_name):
 
-        re_result = re.findall(r'IXI(\d+)-', img_name)
+        re_result = re.findall(r'(\d+)\.npy', img_name)
         img_id = int(re_result[0])
-        img = ni_img.load_img(self._dataset_path + '/' + img_name)
-        img_data = self.resize_img(img.get_data())
-        img_tensor = torch.from_numpy(img_data)
+        img = np.load(self._dataset_path + '/' + img_name)
+        img_tensor = torch.from_numpy(img)
         try:
             age = self._data_info_df.loc[img_id, 'AGE']
             age_tensor = torch.from_numpy(np.array([age]))
@@ -200,7 +172,7 @@ class Database:
 
 if __name__ == '__main__':
     database = Database()
-    database.load_database('../data/', 'IXI-T1', (128, 128, 75), resample=False)
+    database.load_database('../data/', 'IXI-T1', (128, 128, 75), resample=True)
     img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
     print(img_name1, img_name2, age_diff)
     img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
