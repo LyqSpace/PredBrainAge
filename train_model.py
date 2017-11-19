@@ -118,8 +118,8 @@ def train_model(net, database, st_index, st_lr):
             running_loss += loss.data[0]
             total_loss += loss.data[0]
 
-            if loss.data[0] > 100:
-                print('Odd res: ', loss.data[0])
+            # if loss.data[0] > 100:
+            #     print('Odd res: ', loss.data[0])
 
             if data_count % output_step == output_step - 1:
                 print('Epoch: %d, Data size: %d, Total loss: %.3f, Last loss: %.3f' % (epoch, data_count,
