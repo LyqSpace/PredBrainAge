@@ -49,7 +49,7 @@ def test_model(net, database):
         total_loss += abs(age_sum - age_tensor)
 
     total_loss /= test_data_count
-    print('Test size: %d, MAE: %.3f' % (test_data_count, total_loss))
+    print('Test Size: %d, MAE: %.3f' % (test_data_count, total_loss))
 
 
 def main():

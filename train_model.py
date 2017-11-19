@@ -72,7 +72,7 @@ def train_model(net, database):
             total_loss += loss.data[0]
 
             if data_count % output_step == output_step - 1:
-                print('Epoch: %d, Data: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_count,
+                print('Epoch: %d, Data Size: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_count,
                                                                                   total_loss / data_count,
                                                                                   running_loss / (output_step+1)))
                 running_loss = 0
@@ -86,7 +86,7 @@ def train_model(net, database):
         torch.save(net, 'net.pkl')
 
         running_loss /= data_count
-        print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_count, running_loss))
+        print('=== Epoch: %d, Data Size: %d, Average Loss: %.3f' % (epoch, data_count, running_loss))
 
 
 def main(pre_train=False):
