@@ -60,5 +60,23 @@ def resize_data():
         np.save('../data/IXI-T1/' + str(img_id), new_img)
 
 
+def get_training_name_list():
+
+    all_name_list = os.listdir('../data/IXI-T1')
+
+    file = open('../test_name_list.txt', 'r')
+    the_list = []
+    for line in file:
+        the_list.append(line.strip())
+    file.close()
+
+    training_name_list = list(set(all_name_list) - (set(the_list)))
+
+    file = open('../training_name_list.txt', 'w')
+    for name in training_name_list:
+        print(name, file=file)
+    file.close()
+
+
 if __name__ == '__main__':
-    resize_data()
+    get_training_name_list()

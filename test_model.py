@@ -1,7 +1,6 @@
 import os
 import torch
 from torch.autograd import Variable
-import torch.nn as nn
 import torch.backends.cudnn as cudnn
 
 from src.Database import Database
@@ -9,39 +8,54 @@ from src.Database import Database
 
 def test_model(net, database):
 
-    criterion = nn.MSELoss()
-    database.reset_test_index()
-    running_loss = 0
-    data_size = 0
+    database.set_test_index()
+    test_data_count = 0
+    total_loss = 0
+    training_data_size = 100
 
     while database.has_test_next():
 
         img_name, img_tensor, age_tensor = database.load_test_data_next()
-        # print(database.get_test_index(), img_name)
+        target_age = age_tensor.numpy()[0]
+        print('img_name: %s, target_age: %.3f' % (img_name, target_age))
         img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
         img_tensor = Variable(img_tensor.cuda())
-        age_tensor = age_tensor.float()
-        age_tensor = Variable(age_tensor.cuda())
 
-        output = net(img_tensor)
-        # print('output: ', output)
-        # print('target: ', age_tensor)
-        loss = criterion(output, age_tensor)
+        database.random_training_data(training_data_size)
+        training_data_count = 0
+        age_sum = 0
 
-        running_loss += loss.data[0] ** 0.5
-        data_size += 1
+        while database.has_training_data_next():
 
-        if data_size % 11 == 10:
-            print('Test size: %d, MAE: %.3f' % (data_size, running_loss / data_size))
+            training_img_name, training_img_tensor, training_age_tensor = database.load_training_data_next()
+            training_age = training_age_tensor.numpy()[0]
+            training_img_tensor = training_img_tensor.unsqueeze(0).unsqueeze(0).float()
+            training_img_tensor = Variable(training_img_tensor.cuda())
+            output = net(img_tensor, training_img_tensor)
+            # print('output: ', output)
+            # print('target: ', age_tensor)
+            output = output.cpu().numpy()[0]
+            output = output + training_age
+            age_sum += output
+            training_data_count += 1
 
-    running_loss /= data_size
-    print('Test size: %d, MAE: %.3f' % (data_size, running_loss))
+            print('    Count: %d, id: %d, Target Age: %.3f, Mean Age: %.3f' % (training_data_count,
+                                                                               img_name,
+                                                                               age_tensor,
+                                                                               age_sum / training_data_count))
+
+        test_data_count += 1
+        age_sum /= training_data_count
+        total_loss += abs(age_sum - age_tensor)
+
+    total_loss /= test_data_count
+    print('Test size: %d, MAE: %.3f' % (test_data_count, total_loss))
 
 
 def main(pre_train=False):
     print('Load database.')
     database = Database()
-    database.load_database('IXI-T1', shape=(128, 128, 75), resample=False)
+    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test=True, resample=False)
 
     if pre_train and os.path.exists(r'net.pkl'):
         print('Construct net. Load from pkl file.')

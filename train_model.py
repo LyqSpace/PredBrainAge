@@ -35,24 +35,25 @@ def train_model(net, database):
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
     optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.9)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=database.get_training_pair_size(), gamma=0.5)
+    output_step = 10
 
     for epoch in range(100):
 
-        database.set_training_index()
+        database.set_training_pair_index()
         if epoch == 0:
-            database.set_training_index(4300)
+            database.set_training_pair_index(4300)
 
         running_loss = 0
         total_loss = 0
-        data_size = 0
+        data_count = 0
 
-        while database.has_training_next():
+        while database.has_training_pair_next():
 
-            data_size += 1
+            data_count += 1
 
-            img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_data_next()
-            print(data_size, img_name1, img_name2)
+            img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_pair_next()
+            print(database.get_training_pair_index()+1, img_name1, img_name2)
 
             img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).float().cuda())
             img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).float().cuda())
@@ -70,13 +71,13 @@ def train_model(net, database):
             running_loss += loss.data[0]
             total_loss += loss.data[0]
 
-            if data_size % 11 == 10:
-                print('Epoch: %d, Data: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_size,
-                                                                                  total_loss / data_size,
-                                                                                  running_loss / 10))
+            if data_count % output_step == output_step - 1:
+                print('Epoch: %d, Data: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_count,
+                                                                                  total_loss / data_count,
+                                                                                  running_loss / (output_step+1)))
                 running_loss = 0
 
-            if data_size % 11 == 10:
+            if data_count % output_step+1 == output_step - 1:
                 torch.save(net, 'net.pkl')
 
             # if data_size == 50:
@@ -84,14 +85,14 @@ def train_model(net, database):
 
         torch.save(net, 'net.pkl')
 
-        running_loss /= data_size
-        print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_size, running_loss))
+        running_loss /= data_count
+        print('=== Epoch: %d, Datasize: %d, Average Loss: %.3f' % (epoch, data_count, running_loss))
 
 
 def main(pre_train=False):
     print('Load database.')
     database = Database()
-    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), resample=False)
+    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test=False, resample=False)
 
     if pre_train and os.path.exists(r'net.pkl'):
         print('Construct net. Load from pkl file.')
