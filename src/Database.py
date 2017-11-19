@@ -109,8 +109,8 @@ class Database:
         pos = 0
         min_diff = 1e8
         for i in range(self._all_training_data_size):
-            if min_diff > abs(target_age - self._all_training_data_list[i]):
-                min_diff = abs(target_age - self._all_training_data_list[i])
+            if min_diff > abs(target_age - self._all_training_data_list[i][1]):
+                min_diff = abs(target_age - self._all_training_data_list[i][1])
                 pos = i
 
         left_id = pos - 1
@@ -120,11 +120,11 @@ class Database:
         self._training_name_list = []
         while self._training_data_size < training_data_size:
             if left_id >= 0:
-                self._training_name_list.append(self._all_training_data_list[left_id])
+                self._training_name_list.append(self._all_training_data_list[left_id][0])
                 self._training_data_size += 1
                 left_id -= 1
             if right_id < self._all_training_data_size:
-                self._training_name_list.append(self._all_training_data_list[right_id])
+                self._training_name_list.append(self._all_training_data_list[right_id][0])
                 self._training_data_size += 1
                 right_id += 1
 
