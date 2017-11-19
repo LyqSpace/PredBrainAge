@@ -11,7 +11,7 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 200
+    training_data_size = 10
 
     while database.has_test_next():
 
@@ -46,7 +46,7 @@ def test_model(net, database):
 
         test_data_count += 1
         age_sum /= training_data_count
-        total_loss += abs(age_sum - age_tensor)
+        total_loss += abs(age_sum - target_age)
 
     total_loss /= test_data_count
     print('Test Size: %d, MAE: %.3f' % (test_data_count, total_loss))
