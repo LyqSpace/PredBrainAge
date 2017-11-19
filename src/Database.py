@@ -111,11 +111,11 @@ class Database:
     def get_test_index(self):
         return self._test_index
 
-    def reset_training_index(self):
-        self._training_index = 0
+    def set_training_index(self, index=0):
+        self._training_index = index
 
-    def reset_test_index(self):
-        self._test_index = 0
+    def set_test_index(self, index=0):
+        self._test_index = index
 
     def has_training_next(self):
         if self._dataset_loaded is True and self._training_index < self._training_data_size:

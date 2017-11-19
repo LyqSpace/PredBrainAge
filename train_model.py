@@ -39,14 +39,21 @@ def train_model(net, database):
 
     for epoch in range(100):
 
-        database.reset_training_index()
+        database.set_training_index()
+        if epoch == 0:
+            database.set_training_index(4300)
+
         running_loss = 0
+        total_loss = 0
         data_size = 0
 
         while database.has_training_next():
 
+            data_size += 1
+
             img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_data_next()
-            print(database.get_training_index(), img_name1, img_name2)
+            print(data_size, img_name1, img_name2)
+
             img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).float().cuda())
             img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).float().cuda())
             age_diff_tensor = Variable(age_diff_tensor.float().cuda())
@@ -61,12 +68,15 @@ def train_model(net, database):
             optimizer.step()
 
             running_loss += loss.data[0]
-            data_size += 1
+            total_loss += loss.data[0]
 
             if data_size % 11 == 10:
-                print('Epoch: %d, Data: %d, Loss: %.3f' % (epoch, data_size, running_loss / data_size))
+                print('Epoch: %d, Data: %d, Total Loss: %.3f, Last Loss: %.3f' % (epoch, data_size,
+                                                                                  total_loss / data_size,
+                                                                                  running_loss / 10))
+                running_loss = 0
 
-            if data_size % 21 == 20:
+            if data_size % 11 == 10:
                 torch.save(net, 'net.pkl')
 
             # if data_size == 50:
