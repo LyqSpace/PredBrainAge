@@ -119,7 +119,7 @@ def train_model(net, database, st_index, st_lr):
             total_loss += loss.data[0]
 
             if loss.data[0] > 100:
-                print(loss.data[0])
+                print('Odd res: ', loss.data[0])
 
             if data_count % output_step == output_step - 1:
                 print('Epoch: %d, Data size: %d, Total loss: %.3f, Last loss: %.3f' % (epoch, data_count,
@@ -140,7 +140,7 @@ def train_model(net, database, st_index, st_lr):
 
 
 def main(pre_train, st_index, st_lr):
-    print(st_lr)
+
     test_mode = False
     resample = False
     print('Load database. Test mode %s, Resample %s' % (test_mode, resample))

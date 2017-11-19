@@ -21,7 +21,7 @@ def test_model(net, database):
         img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
         img_tensor = Variable(img_tensor.cuda())
 
-        database.random_training_data(training_data_size)
+        database.select_training_data(training_data_size, target_age)
         training_data_count = 0
         age_sum = 0
 

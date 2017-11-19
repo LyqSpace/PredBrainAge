@@ -78,5 +78,47 @@ def get_training_name_list():
     file.close()
 
 
+def save_list(the_list, file_name):
+    file = open(file_name, 'w')
+    for name in the_list:
+        print(name, file=file)
+    file.close()
+
+
+def read_list(file_name):
+    file = open(file_name, 'r')
+    the_list = []
+    for line in file:
+        the_list.append(line.strip())
+    file.close()
+    return the_list
+
+
+def delete_data(data_id):
+    the_list = read_list('training_pair_list.txt')
+    new_list = []
+    count = 0
+    for i in range(len(the_list)):
+        line = the_list[i]
+        line = line.replace('(', '').replace(')', '').replace(' ', '').replace('\'', '')
+        tmp = line.split(',')
+        if tmp[0] != (str(data_id) + '.npy') and tmp[1] != (str(data_id) + '.npy'):
+            new_list.append((tmp[0], tmp[1]))
+        else:
+            count += 1
+    print(count)
+    save_list(new_list, 'training_pair_list.txt')
+
+    the_list = read_list('training_name_list.txt')
+    new_list = []
+    count = 0
+    for i in range(len(the_list)):
+        if the_list[i] != (str(data_id) + '.npy'):
+            new_list.append(the_list[i])
+        else:
+            count += 1
+    print(count)
+    save_list(new_list, 'training_name_list.txt')
+
 if __name__ == '__main__':
-    get_training_name_list()
+    delete_data(533)

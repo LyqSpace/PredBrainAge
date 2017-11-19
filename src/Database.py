@@ -17,6 +17,8 @@ class Database:
         self._test_index = 0
         self._test_data_size = 0
         self._test_name_list = None
+        self._all_training_data_size = 0
+        self._all_training_data_list = None
 
         self._training_data_index = 0
         self._training_data_size = 0
@@ -82,16 +84,50 @@ class Database:
                     self._test_index = 0
                     self._test_data_size = len(self._test_name_list)
                     # print('Test name list: ', self._test_name_list)
+
+                    all_training_name_list = self.read_list('training_name_list.txt')
+
+                    self._all_training_data_list = []
+                    for training_name in all_training_name_list:
+                        re_result = re.findall(r'(\d+)\.npy', training_name)
+                        img_id = int(re_result[0])
+                        try:
+                            age = self._data_info_df.loc[img_id, 'AGE']
+                            self._all_training_data_list.append((training_name, age))
+                        except KeyError:
+                            raise Exception('The image id ' + str(img_id) + ' is not included in the xls file.')
+
+                    self._all_training_data_list.sort(key=lambda data: data[1])
+                    self._all_training_data_size = len(self._all_training_data_list)
                 
             self._dataset_loaded = True
         else:
             raise Exception(dataset_name + ' dataset is not found.')
 
-    def random_training_data(self, training_data_size):
-        training_name_list = self.read_list('training_name_list.txt')
-        self._training_name_list = random.sample(training_name_list, training_data_size)
+    def select_training_data(self, training_data_size, target_age):
+
+        pos = 0
+        min_diff = 1e8
+        for i in range(self._all_training_data_size):
+            if min_diff > abs(target_age - self._all_training_data_list[i]):
+                min_diff = abs(target_age - self._all_training_data_list[i])
+                pos = i
+
+        left_id = pos - 1
+        right_id = pos
         self._training_data_index = 0
-        self._training_data_size = len(self._training_name_list)
+        self._training_data_size = 0
+        self._training_name_list = []
+        while self._training_data_size < training_data_size:
+            if left_id >= 0:
+                self._training_name_list.append(self._all_training_data_list[left_id])
+                self._training_data_size += 1
+                left_id -= 1
+            if right_id < self._all_training_data_size:
+                self._training_name_list.append(self._all_training_data_list[right_id])
+                self._training_data_size += 1
+                right_id += 1
+
         self._test_loaded = True
 
     def save_list(self, the_list, file_name):
