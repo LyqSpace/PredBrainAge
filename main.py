@@ -81,7 +81,7 @@ def train_model(net, database):
 def main(pre_train=False):
     print('Load database.')
     database = Database()
-    database.load_database('IXI-T1', shape=(128, 128, 75), resample=False)
+    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), resample=False)
 
     if pre_train and os.path.exists(r'net.pkl'):
         print('Construct net. Load from pkl file.')

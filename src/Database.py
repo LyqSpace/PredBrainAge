@@ -26,10 +26,10 @@ class Database:
         self._dataset_path = None
         self._data_info_df = None
 
-    def load_database(self, dataset_name, shape=None, resample=True):
+    def load_database(self, data_path, dataset_name, shape=None, resample=True):
 
         self._dataset_name = dataset_name
-        self._dataset_path = '../data/' + dataset_name
+        self._dataset_path = data_path + dataset_name
         self._shape = shape
 
         if dataset_name == 'IXI-T1':
@@ -200,7 +200,7 @@ class Database:
 
 if __name__ == '__main__':
     database = Database()
-    database.load_database('IXI-T1', (128, 128, 75), resample=False)
+    database.load_database('../data/', 'IXI-T1', (128, 128, 75), resample=False)
     img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
     print(img_name1, img_name2, age_diff)
     img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
