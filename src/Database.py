@@ -29,7 +29,7 @@ class Database:
         self._dataset_path = None
         self._data_info_df = None
 
-    def load_database(self, data_path, dataset_name, shape=None, test=False, resample=True):
+    def load_database(self, data_path, dataset_name, shape=None, test_mode=False, resample=True):
 
         self._dataset_name = dataset_name
         self._dataset_path = data_path + dataset_name
@@ -42,7 +42,7 @@ class Database:
             self._data_info_df.dropna(how='any', inplace=True)
             self._data_info_df.index = self._data_info_df['IXI_ID']
 
-            if test is False and resample is True:
+            if test_mode is False and resample is True:
                 data_name_list = os.listdir(self._dataset_path)
 
                 data_size = len(data_name_list)
@@ -67,7 +67,7 @@ class Database:
                 self.save_list(self._test_name_list, 'test_name_list.txt')
 
             else:
-                if test is False:
+                if test_mode is False:
                     self._training_pair_index = 0
                     self._training_pair_list = self.read_list('training_pair_list.txt')
                     self._training_pair_size = len(self._training_pair_list)

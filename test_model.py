@@ -39,7 +39,7 @@ def test_model(net, database):
             age_sum += output
             training_data_count += 1
 
-            print('    Count: %d, Train id: %s, Train Age: %.3f, Age Diff %.3f, Mean Age: %.3f' % (training_data_count,
+            print('    Count: %d, Train id: %s, Train age: %.3f, Age diff %.3f, Mean age: %.3f' % (training_data_count,
                                                                                                    training_img_name,
                                                                                                    training_age,
                                                                                                    age_diff,
@@ -50,19 +50,21 @@ def test_model(net, database):
         total_loss += abs(age_sum - target_age)
 
     total_loss /= test_data_count
-    print('Test Size: %d, MAE: %.3f' % (test_data_count, total_loss))
+    print('Test size: %d, MAE: %.3f' % (test_data_count, total_loss))
 
 
 def main():
-    print('Load database.')
+    test_mode = False
+    resample = False
+    print('Load database. Test mode %s, Resample %s' % (test_mode, resample))
     database = Database()
-    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test=True, resample=False)
+    database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test_mode=test_mode, resample=resample)
 
-    if os.path.exists(r'net.pkl.backup'):
-        print('Construct net. Load from pkl.backup file.')
-        net = torch.load('net.pkl.backup')
+    if os.path.exists(r'net.pkl'):
+        print('Construct net. Load from pkl file.')
+        net = torch.load('net.pkl')
     else:
-        raise Exception('Test the net need net.kpl.backup file.')
+        raise Exception('Test the net need net.kpl file.')
 
     net.cuda()
 
