@@ -8,37 +8,60 @@ class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
+
         conv1_layers = 8
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
-        self.conv1 = nn.Conv3d(1, conv1_layers, (4, 4, 4))
-        self.conv2 = nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 3))
-        self.conv3 = nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3))
 
-        self.fc1 = nn.Linear(conv3_layers * 3 * 3 * 3, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self._fc_nums = conv3_layers * 4 * 4 * 5
 
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool3d(x, (5, 5, 3))
-        x = F.relu(self.conv2(x))
-        x = F.max_pool3d(x, (2, 2, 2))
-        x = F.relu(self.conv3(x))
-        x = F.max_pool3d(x, (3, 3, 3))
-        x = x.view(1, self.num_flat_features(x))
+        self.convs = nn.Sequential (
+            nn.Conv3d(1, conv1_layers, (4, 4, 4)),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d((3, 3, 2)),
+
+            nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 4)),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 3)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d((3, 3, 2)),
+
+            nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 4)),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d((2, 2, 2)),
+
+
+        )
+
+        self.fcs = nn.Sequential(
+            nn.Linear(self._fc_nums, 512),
+            nn.Linear(512, 128)
+        )
+
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 16)
+        self.fc3 = nn.Linear(16, 1)
+
+    def forward(self, x1, x2):
+        x1 = self.convs(x1)
+        x1 = x1.view(1, self._fc_nums)
+        x1 = self.fcs(x1)
+
+        x2 = self.convs(x2)
+        x2 = x2.view(1, self._fc_nums)
+        x2 = self.fcs(x2)
+
+        x = torch.cat((x1, x2), 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
 
         return x
 
-    def num_flat_features(self, x):
-        size = x.size()[1:]
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
 
 if __name__ == '__main__':
     import torch.backends.cudnn as cudnn
@@ -47,5 +70,5 @@ if __name__ == '__main__':
     print(net)
     net.cuda()
     input = Variable(torch.randn(1, 1, 128, 128, 75).cuda())
-    output = net(input)
+    output = net(input, input)
     print(output)

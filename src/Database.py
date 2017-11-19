@@ -44,11 +44,19 @@ class Database:
 
                 data_size = len(data_name_list)
                 self._training_index = 0
-                self._training_data_size = int(0.9 * data_size)
-                self._training_name_list = random.sample(data_name_list, self._training_data_size)
+                training_data_size = int(0.9 * data_size)
+                training_name_list = random.sample(data_name_list, training_data_size)
+
+                unit_list = []
+                for i in range(training_data_size):
+                    for j in range(i):
+                        unit_list.append((training_name_list[i], training_name_list[j]))
+
+                self._training_name_list = random.sample(unit_list, len(unit_list))
+                self._training_data_size = len(self._training_name_list)
 
                 self._test_index = 0
-                self._test_name_list = list(set(data_name_list) - (set(self._training_name_list)))
+                self._test_name_list = list(set(data_name_list) - (set(training_name_list)))
                 self._test_data_size = len(self._test_name_list)
 
                 self.save_name_list()
@@ -82,7 +90,9 @@ class Database:
         file = open('training_name_list.txt', 'r')
         self._training_name_list = []
         for line in file:
-            self._training_name_list.append(line.strip())
+            line = line.strip().replace('(', '').replace(')', '').replace(' ', '').replace('\'', '')
+            tmp = line.split(',')
+            self._training_name_list.append((tmp[0],tmp[1]))
         file.close()
 
         file = open('test_name_list.txt', 'r')
@@ -168,10 +178,13 @@ class Database:
         if self._training_index == self._training_data_size:
             raise Exception('This dataset has nothing to be loaded.')
 
-        img_name = self._training_name_list[self._training_index]
+        img_name = self._training_name_list[self._training_index][0]
+        img_name1, img_tensor1, age_tensor1 = self.load_data(img_name)
+        img_name = self._training_name_list[self._training_index][1]
+        img_name2, img_tensor2, age_tensor2 = self.load_data(img_name)
         self._training_index += 1
 
-        return self.load_data(img_name)
+        return img_name1, img_tensor1, img_name2, img_tensor2, age_tensor1 - age_tensor2
     
     def load_test_data_next(self):
 
@@ -187,6 +200,12 @@ class Database:
 
 if __name__ == '__main__':
     database = Database()
-    database.load_database('IXI-T1', (128, 128, 75))
-    database.load_training_data_next()
-    database.load_training_data_next()
+    database.load_database('IXI-T1', (128, 128, 75), resample=False)
+    img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
+    print(img_name1, img_name2, age_diff)
+    img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
+    print(img_name1, img_name2, age_diff)
+    img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
+    print(img_name1, img_name2, age_diff)
+    img_name1, _, img_name2, _, age_diff = database.load_training_data_next()
+    print(img_name1, img_name2, age_diff)
