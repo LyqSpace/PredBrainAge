@@ -11,13 +11,13 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 10
+    training_data_size = 20
 
     while database.has_test_next():
 
         img_name, img_tensor, age_tensor = database.load_test_data_next()
         target_age = age_tensor.numpy()[0]
-        print('img_name: %s, target_age: %.3f' % (img_name, target_age))
+        print('Test id: %d, Img name: %s, Target age: %.3f' % (database.get_test_index(), img_name, target_age))
         img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
         img_tensor = Variable(img_tensor.cuda())
 
