@@ -38,7 +38,7 @@ def test_model(net, database):
 
             output2 = net(training_img_tensor, img_tensor)
             age_diff2 = output2.data.cpu().numpy()[0][0]
-            print(age_diff, age_diff2)
+            age_diff = (age_diff - age_diff2) / 2
 
             pred_age = age_diff + training_age
             if pred_age < 10 or pred_age > 95:
@@ -64,7 +64,7 @@ def test_model(net, database):
 def main():
     test_mode = True
     resample = False
-    print('Load database. Test mode %s, Resample %s' % (test_mode, resample))
+    print('Load database. Test mode: %s, Resample: %s' % (test_mode, resample))
     database = Database()
     database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test_mode=test_mode, resample=resample)
 

@@ -143,7 +143,7 @@ def main(pre_train, st_index, st_lr):
 
     test_mode = False
     resample = False
-    print('Load database. Test mode %s, Resample %s' % (test_mode, resample))
+    print('Load database. Test mode: %s, Resample: %s' % (test_mode, resample))
     database = Database()
     database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test_mode=test_mode, resample=resample)
 
