@@ -35,15 +35,16 @@ def test_model(net, database):
             # print('output: ', output)
             # print('target: ', age_tensor)
             age_diff = output.data.cpu().numpy()[0][0]
-            output = age_diff + training_age
-            age_sum += output
+            pred_age = age_diff + training_age
+            age_sum += pred_age
             training_data_count += 1
 
-            print('    Count: %d, Train id: %s, Train age: %.3f, Age diff %.3f, Mean age: %.3f' % (training_data_count,
-                                                                                                   training_img_name,
-                                                                                                   training_age,
-                                                                                                   age_diff,
-                                                                                                   age_sum / training_data_count))
+            print('    Count: %d, Name: %s, Age: %.3f, Diff %.3f, Pred Age: %.3f, Mean Res: %.3f' % (training_data_count,
+                                                                                                     training_img_name,
+                                                                                                     training_age,
+                                                                                                     age_diff,
+                                                                                                     pred_age,
+                                                                                                     age_sum / training_data_count))
 
         test_data_count += 1
         age_sum /= training_data_count
