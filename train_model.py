@@ -117,7 +117,6 @@ def train_model(net, database, st_id, st_lr):
             data_count += 1
 
             img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_pair_next()
-            print(database.get_training_pair_index(), img_name1, img_name2)
 
             img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).float().cuda())
             img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).float().cuda())
@@ -126,6 +125,10 @@ def train_model(net, database, st_id, st_lr):
             output = net(img_tensor1, img_tensor2)
             # print('output: ', output)
             # print('target: ', age_tensor)
+            output_float = output.data.cpu().numpy()[0][0]
+            age_diff_float = age_diff_tensor.data.cpu.numpy()[0]
+            print(database.get_training_pair_index(), img_name1, img_name2, age_diff_float, output_float)
+
             optimizer.zero_grad()
             loss = criterion(output, age_diff_tensor)
             loss.backward()
