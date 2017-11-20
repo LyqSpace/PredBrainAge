@@ -26,7 +26,11 @@ def rm_unused_data():
 def resize_data():
 
     data_name_list = os.listdir('../data/IXI-T1-raw')
+    count = 0
     for name in data_name_list:
+
+        count += 1
+
         re_result = re.findall(r'IXI(\d+)-', name)
         img_id = int(re_result[0])
         img = ni_img.load_img('../data/IXI-T1-raw/' + name).get_data()
@@ -38,7 +42,7 @@ def resize_data():
             continue
 
         resize_rate = [new_shape[0]/img.shape[0], new_shape[1]/img.shape[1], new_shape[2]/img.shape[2]]
-        print(name, img.shape)
+        print(count, name, img.shape)
         new_img = np.zeros(shape=new_shape, dtype='int16')
         for x in range(new_shape[0]):
             for y in range(new_shape[1]):
@@ -47,12 +51,17 @@ def resize_data():
                     # old_y = int(y / resize_rate[1])
                     old_z = int(z / resize_rate[2])
                     u = z / resize_rate[2] - old_z
+
                     # data = 1.0/8 * (float(img[old_x, old_y, old_z]) + float(img[old_x, old_y, old_z+1]) +
                     #                 float(img[old_x, old_y+1, old_z]) + float(img[old_x, old_y+1, old_z+1]) +
                     #                 float(img[old_x+1, old_y, old_z]) + float(img[old_x+1, old_y, old_z+1]) +
                     #                 float(img[old_x+1, old_y+1, old_z]) + float(img[old_x+1, old_y+1, old_z+1]))
+
                     # data2 = img[x, y, old_z]
+
                     data3 = (1-u) * img[x, y, old_z] + u *  img[x, y, old_z+1]
+                    # print(u, img[x, y, old_z], img[x, y, old_z + 1], data3)
+
                     # if (data != 0) :
                     #     print(data, data0)
                     new_img[x, y, z] = data3
