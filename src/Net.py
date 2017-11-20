@@ -9,7 +9,7 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        conv1_layers = 8
+        conv1_layers = 16
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
 
@@ -33,7 +33,6 @@ class Net(nn.Module):
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
-            nn.BatchNorm3d(conv3_layers)
 
         )
 

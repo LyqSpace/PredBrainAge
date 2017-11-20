@@ -96,7 +96,7 @@ def train_model(net, database, st_id, st_lr):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
-    optimizer = optim.RMSprop(net.parameters(), lr=st_lr, alpha=0.9)
+    optimizer = optim.RMSprop(net.parameters(), lr=st_lr, alpha=0.9, weight_decay=1e-5)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
     output_step = 10
 
