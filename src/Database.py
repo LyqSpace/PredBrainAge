@@ -122,6 +122,9 @@ class Database:
 
         # self._training_name_list = random.sample(tmp_list, training_data_size)
         self._training_name_list = random.sample(self._all_training_data_list, training_data_size)
+        for i in range(training_data_size):
+            self._training_name_list[i] = self._training_name_list[i][0]
+
         self._training_data_size = len(self._training_name_list)
         self._training_data_index = 0
         self._test_loaded = True
