@@ -6,7 +6,7 @@ class Logger:
 
     def __init__(self, event_name, log_file):
 
-        fmt = '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+        fmt = '%(asctime)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(fmt)
         handler = logging.handlers.RotatingFileHandler(log_file)
         handler.setFormatter(formatter)

@@ -126,7 +126,7 @@ def train_model(net, database, st_id, st_lr):
             # print('output: ', output)
             # print('target: ', age_tensor)
             output_float = output.data.cpu().numpy()[0][0]
-            age_diff_float = age_diff_tensor.data.cpu.numpy()[0]
+            age_diff_float = age_diff_tensor.data.cpu().numpy()[0]
             print(database.get_training_pair_index(), img_name1, img_name2, age_diff_float, output_float)
 
             optimizer.zero_grad()
