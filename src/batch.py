@@ -57,7 +57,7 @@ def resize_data():
         # print(img.min())
         # new_img = new_img - new_img.mean()
 
-        np.save('../data/IXI-T1/' + str(img_id), new_img)
+        np.save('../data/IXI-T1-new/' + str(img_id), new_img)
 
 
 def get_training_name_list():

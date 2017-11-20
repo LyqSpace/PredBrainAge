@@ -9,41 +9,86 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        conv1_layers = 8
+        # net 1, MAE: 6.6
+        #
+        # conv1_layers = 8
+        # conv2_layers = conv1_layers * 2
+        # conv3_layers = conv2_layers * 2
+        #
+        # self._fc_nums = conv3_layers * 4 * 4 * 5
+        #
+        # self.convs = nn.Sequential (
+        #     nn.Conv3d(1, conv1_layers, (4, 4, 4)),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
+        #     nn.ReLU(inplace=True),
+        #     nn.MaxPool3d((3, 3, 2)),
+        #
+        #     nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 4)),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 3)),
+        #     nn.ReLU(inplace=True),
+        #     nn.MaxPool3d((3, 3, 2)),
+        #
+        #     nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 4)),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
+        #     nn.ReLU(inplace=True),
+        #     nn.MaxPool3d((2, 2, 2)),
+        #
+        # )
+        #
+        # self.fcs = nn.Sequential(
+        #     nn.Linear(self._fc_nums, 512),
+        #     nn.Linear(512, 128)
+        # )
+        #
+        # self.fc1 = nn.Linear(256, 128)
+        # self.fc2 = nn.Linear(128, 16)
+        # self.fc3 = nn.Linear(16, 1)
+
+        conv1_layers = 16
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
+        conv4_layers = conv3_layers * 2
 
-        self._fc_nums = conv3_layers * 4 * 4 * 5
+        self._fc_nums = conv4_layers * 5 * 5 * 5
 
         self.convs = nn.Sequential (
-            nn.Conv3d(1, conv1_layers, (4, 4, 4)),
+            nn.Conv3d(1, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d((3, 3, 2)),
+            nn.MaxPool3d((2, 2, 2)),
 
-            nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 4)),
+            nn.Conv3d(conv1_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d((3, 3, 2)),
+            nn.MaxPool3d((2, 2, 2)),
 
-            nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 4)),
+            nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d((2, 2, 2)),
+            nn.MaxPool3d((3, 3, 2)),
+
+            nn.Conv3d(conv3_layers, conv4_layers, (3, 3, 3)),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 3)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d((3, 3, 2)),
 
         )
 
         self.fcs = nn.Sequential(
-            nn.Linear(self._fc_nums, 512),
-            nn.Linear(512, 128)
+            nn.Linear(self._fc_nums, 4096),
+            nn.Linear(4096, 1024)
         )
 
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 16)
-        self.fc3 = nn.Linear(16, 1)
+        self.fc1 = nn.Linear(2048, 1024)
+        self.fc2 = nn.Linear(1024, 128)
+        self.fc3 = nn.Linear(128, 1)
 
     def forward(self, x1, x2):
         x1 = self.convs(x1)
