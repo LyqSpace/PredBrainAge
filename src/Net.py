@@ -33,14 +33,13 @@ class Net(nn.Module):
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
+            nn.BatchNorm3d(conv3_layers)
 
         )
 
         self.fcs = nn.Sequential(
             nn.Linear(self._fc_nums, 512),
-            nn.BatchNorm1d(512),
-            nn.Linear(512, 128),
-            nn.BatchNorm1d(128)
+            nn.Linear(512, 128)
         )
 
         self.fc1 = nn.Linear(256, 128)
