@@ -11,7 +11,8 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 10
+    training_data_size = 20
+    test_result_list = []
 
     while database.has_test_next():
 
@@ -57,10 +58,20 @@ def test_model(net, database):
 
         test_data_count += 1
         age_sum /= training_data_count
-        total_loss += abs(age_sum - target_age)
+        error = age_sum - target_age
+        total_loss += abs(error)
+
+        test_result_list.append((target_age, abs(error)))
 
     total_loss /= test_data_count
-    print('Test size: %d, MAE: %.3f' % (test_data_count, total_loss))
+
+    test_result_list.sort(key=lambda data: data[1])
+    confidence_interval_25 = test_result_list[int(0.25 * test_data_count)]
+    confidence_interval_75 = test_result_list[int(0.75 * test_data_count)]
+    confidence_interval_95 = test_result_list[int(0.95 * test_data_count)]
+
+    print('Test size: %d, MAE: %.3f, Interval 25%%: %.3f, Interval 75%%: %.3f, Interval 95%%: %.3f, ' % \
+          (test_data_count, total_loss, confidence_interval_25, confidence_interval_75, confidence_interval_95))
 
 
 def main():

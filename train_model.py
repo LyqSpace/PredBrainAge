@@ -187,4 +187,4 @@ if __name__ == '__main__':
              st_id=user_params['st_id'],
              st_lr=user_params['st_lr'])
     else:
-        raise Exception('User params is wrong.')
+        raise Exception('User params are wrong.')
