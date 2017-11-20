@@ -23,13 +23,16 @@ def rm_unused_data():
     f.close()
 
 
-def resize_data():
+def resize_data(st_id = 0):
 
     data_name_list = os.listdir('../data/IXI-T1-raw')
     count = 0
     for name in data_name_list:
 
         count += 1
+
+        if count <= st_id:
+            continue
 
         re_result = re.findall(r'IXI(\d+)-', name)
         img_id = int(re_result[0])
@@ -144,4 +147,4 @@ def delete_data(data_id):
 
 if __name__ == '__main__':
     # delete_data(533)
-    resize_data()
+    resize_data(347)
