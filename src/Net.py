@@ -43,10 +43,15 @@ class Net(nn.Module):
         #     nn.Linear(512, 128)
         # )
         #
-        # self.fc1 = nn.Linear(256, 128)
-        # self.fc2 = nn.Linear(128, 16)
-        # self.fc3 = nn.Linear(16, 1)
+        # self.units = nn.Sequential(
+        #     nn.Linear(256, 128),
+        #     nn.ReLU(inplace=True),
+        #     nn.Linear(128, 16),
+        #     nn.ReLU(inplace=True),
+        #     nn.Linear(16, 1)
+        # )
 
+        # net2
         conv1_layers = 8
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
@@ -86,13 +91,22 @@ class Net(nn.Module):
         )
 
         self.fcs = nn.Sequential(
-            nn.Linear(self._fc_nums, 4096),
-            nn.Linear(4096, 1024)
+            nn.Linear(self._fc_nums, 1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True)
         )
 
-        self.fc1 = nn.Linear(2048, 1024)
-        self.fc2 = nn.Linear(1024, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self.units = nn.Sequential(
+            nn.Linear(1024, 1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2, inplace=True),
+            nn.Linear(1024, 128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, 1),
+        )
 
     def forward(self, x1, x2):
         x1 = self.convs(x1)
@@ -103,14 +117,15 @@ class Net(nn.Module):
         x2 = x2.view(1, self._fc_nums)
         x2 = self.fcs(x2)
 
+        # net1
         # x = torch.cat((x1, x2), 1)
-        add_x = x1 + x2
-        mul_x = torch.mul(x1, x2)
-        x = torch.cat((add_x, mul_x), 1)
 
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        # net2
+        diff_x = x1 - x2
+        mul_x = torch.mul(x1, x2)
+        x = torch.cat((x1, x2, diff_x, mul_x), 1)
+
+        x = self.units(x)
 
         return x
 
