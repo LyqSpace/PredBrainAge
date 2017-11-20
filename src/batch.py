@@ -40,7 +40,8 @@ def resize_data():
         print(count, name, img.shape)
 
         if img.shape[0] == new_shape[0] and img.shape[1] == new_shape[1] and img.shape[2] == new_shape[2]:
-            np.save('../data/IXI-T1-new/' + str(img_id), img)
+            new_img = np.zeros(shape=new_shape, dtype='int16') # Magic: To reduce the npy file size.
+            np.save('../data/IXI-T1-new/' + str(img_id), new_img)
             continue
 
         resize_rate = [new_shape[0]/img.shape[0], new_shape[1]/img.shape[1], new_shape[2]/img.shape[2]]
@@ -62,7 +63,7 @@ def resize_data():
 
                     # data2 = img[x, y, old_z]
                     if u != 0:
-                        data3 = (1-u) * img[x, y, old_z] + u *  img[x, y, old_z+1]
+                        data3 = (1-u) * img[x, y, old_z] + u * img[x, y, old_z+1]
                     else:
                         data3 = img[x, y, old_z]
                     # print(u, img[x, y, old_z], img[x, y, old_z + 1], data3)
