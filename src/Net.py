@@ -47,7 +47,7 @@ class Net(nn.Module):
         # self.fc2 = nn.Linear(128, 16)
         # self.fc3 = nn.Linear(16, 1)
 
-        conv1_layers = 16
+        conv1_layers = 8
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
         conv4_layers = conv3_layers * 2
