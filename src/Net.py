@@ -41,11 +41,13 @@ class Net(nn.Module):
             nn.MaxPool3d((2, 2, 2))
         )
 
-        self.fcs = nn.Sequential(
+        self.fc1 = nn.Sequential(
             nn.Linear(self._fc_nums, 512),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True)
+        )
+        self.fc2 = nn.Sequential(
             nn.Linear(512, 128),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=True)
         )
 
         self.units = nn.Sequential(
@@ -117,17 +119,19 @@ class Net(nn.Module):
         # )
 
     def forward(self, x1, x2):
-        x1 = F.dropout(self.convs1(x1), p=0.2, training=self.training)
-        x1 = F.dropout(self.convs2(x1), p=0.2, training=self.training)
+        x1 = self.convs1(x1)
+        x1 = self.convs2(x1)
         x1 = F.dropout(self.convs3(x1), p=0.2, training=self.training)
         x1 = x1.view(1, self._fc_nums)
-        x1 = F.dropout(self.fcs(x1), p=0.2, training=self.training)
+        x1 = F.dropout(self.fc1(x1), p=0.2, training=self.training)
+        x1 = self.fc2(x1)
 
-        x2 = F.dropout(self.convs1(x2), p=0.2, training=self.training)
-        x2 = F.dropout(self.convs2(x2), p=0.2, training=self.training)
+        x2 = self.convs1(x2)
+        x2 = self.convs2(x2)
         x2 = F.dropout(self.convs3(x2), p=0.2, training=self.training)
         x2 = x2.view(1, self._fc_nums)
-        x2 = F.dropout(self.fcs(x2), p=0.2, training=self.training)
+        x2 = F.dropout(self.fc1(x2), p=0.2, training=self.training)
+        x2 = self.fc2(x2)
 
         # net1
         # x = torch.cat((x1, x2), 1)
