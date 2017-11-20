@@ -17,37 +17,35 @@ class Net(nn.Module):
 
         self._fc_nums = conv3_layers * 4 * 4 * 5
 
-        self.convs = nn.Sequential (
+        self.convs1 = nn.Sequential (
             nn.Conv3d(1, conv1_layers, (4, 4, 4)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d((3, 3, 2)),
-            nn.Dropout(0.2, inplace=True),
+            nn.MaxPool3d((3, 3, 2))
+        }
 
+        self.convs2 = nn.Sequential(
             nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 4)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
-            nn.Dropout(0.2, inplace=True),
+        )
 
+        self.convs3 = nn.Sequential(
             nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.MaxPool3d((2, 2, 2)),
-            nn.Dropout(0.2, inplace=True),
-
+            nn.MaxPool3d((2, 2, 2))
         )
 
         self.fcs = nn.Sequential(
             nn.Linear(self._fc_nums, 512),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2, inplace=True),
             nn.Linear(512, 128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2, inplace=True),
         )
 
         self.units = nn.Sequential(
@@ -119,13 +117,17 @@ class Net(nn.Module):
         # )
 
     def forward(self, x1, x2):
-        x1 = self.convs(x1)
+        x1 = F.dropout(self.convs1(x1), p=0.2, training=self.training)
+        x1 = F.dropout(self.convs2(x1), p=0.2, training=self.training)
+        x1 = F.dropout(self.convs3(x1), p=0.2, training=self.training)
         x1 = x1.view(1, self._fc_nums)
-        x1 = self.fcs(x1)
+        x1 = F.dropout(self.fcs(x1), p=0.2, training=self.training)
 
-        x2 = self.convs(x2)
+        x2 = F.dropout(self.convs1(x2), p=0.2, training=self.training)
+        x2 = F.dropout(self.convs2(x2), p=0.2, training=self.training)
+        x2 = F.dropout(self.convs3(x2), p=0.2, training=self.training)
         x2 = x2.view(1, self._fc_nums)
-        x2 = self.fcs(x2)
+        x2 = F.dropout(self.fcs(x2), p=0.2, training=self.training)
 
         # net1
         # x = torch.cat((x1, x2), 1)
