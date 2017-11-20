@@ -121,4 +121,5 @@ def delete_data(data_id):
     save_list(new_list, '../training_name_list.txt')
 
 if __name__ == '__main__':
-    delete_data(533)
+    # delete_data(533)
+    resize_data()
