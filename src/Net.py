@@ -60,24 +60,28 @@ class Net(nn.Module):
             nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
+            nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv1_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
+            nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
+            nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv3_layers, conv4_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
+            nn.Dropout(0.2, inplace=True),
 
         )
 
@@ -99,7 +103,11 @@ class Net(nn.Module):
         x2 = x2.view(1, self._fc_nums)
         x2 = self.fcs(x2)
 
-        x = torch.cat((x1, x2), 1)
+        # x = torch.cat((x1, x2), 1)
+        add_x = x1 + x2
+        mul_x = torch.mul(x1, x2)
+        x = torch.cat((add_x, mul_x), 1)
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
