@@ -76,7 +76,7 @@ class Net(nn.Module):
 
             nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 4)),
+            nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
             nn.Dropout(0.2, inplace=True),
