@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 
 from src.Net import Net
 from src.Database import Database
+from src.Logger import Logger
 
 
 def get_user_params():
@@ -85,6 +86,8 @@ def train_model(net, database, st_index, st_lr):
     scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
     output_step = 10
 
+    logger = Logger('train', 'train.log')
+
     for epoch in range(100):
 
         database.set_training_pair_index()
@@ -122,9 +125,11 @@ def train_model(net, database, st_index, st_lr):
             #     print('Odd res: ', loss.data[0])
 
             if data_count % output_step == output_step - 1:
-                print('Epoch: %d, Data size: %d, Total loss: %.3f, Last loss: %.3f' % (epoch, data_count,
-                                                                                  total_loss / data_count,
-                                                                                  running_loss / (output_step+1)))
+                message = 'Epoch: %d, Data size: %d, Total loss: %.3f, Last loss: %.3f' % (epoch, data_count,
+                                                                                           total_loss / data_count,
+                                                                                           running_loss / (output_step+1))
+                print(message)
+                logger.log(message)
                 running_loss = 0
 
             if data_count % output_step+1 == output_step - 1:
@@ -136,7 +141,9 @@ def train_model(net, database, st_index, st_lr):
         torch.save(net, 'net.pkl')
 
         running_loss /= data_count
-        print('=== Epoch: %d, Data size: %d, Average loss: %.3f' % (epoch, data_count, running_loss))
+        message = '=== Epoch: %d, Data size: %d, Average loss: %.3f' % (epoch, data_count, running_loss)
+        print(message)
+        logger.log(message)
 
 
 def main(pre_train, st_index, st_lr):
