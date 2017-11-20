@@ -2,12 +2,14 @@
 data/IXI-T1/
 data/IXI-T1-unused/
 data/IXI-T1-raw/
+experiments/
 
 *.pyc
 *.log
 
 /*.pkl
 /*.pkl.backup
+/*.pkl.best
 /training_name_list.txt
 /test_name_list.txt
 /training_pair_list.txt
