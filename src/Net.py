@@ -65,44 +65,44 @@ class Net(nn.Module):
             nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv1_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
 
             nn.Conv3d(conv3_layers, conv4_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
 
         )
 
         self.fcs = nn.Sequential(
             nn.Linear(self._fc_nums, 1024),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
             nn.Linear(1024, 256),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2, inplace=True)
+            # nn.Dropout(0.2, inplace=True)
         )
 
         self.units = nn.Sequential(
             nn.Linear(1024, 1024),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.2, inplace=True),
+            # nn.Dropout(0.2, inplace=True),
             nn.Linear(1024, 128),
             nn.ReLU(inplace=True),
             nn.Linear(128, 1),
