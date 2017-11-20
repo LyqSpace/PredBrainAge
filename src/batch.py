@@ -51,8 +51,9 @@ def resize_data():
                 for z in range(new_shape[2]):
                     # old_x = int(x / resize_rate[0])
                     # old_y = int(y / resize_rate[1])
-                    old_z = int(z / resize_rate[2])
-                    u = z / resize_rate[2] - old_z
+                    u = (z+1) / resize_rate[2] - 1
+                    old_z = int(u)
+                    u -= old_z
 
                     # data = 1.0/8 * (float(img[old_x, old_y, old_z]) + float(img[old_x, old_y, old_z+1]) +
                     #                 float(img[old_x, old_y+1, old_z]) + float(img[old_x, old_y+1, old_z+1]) +
@@ -60,8 +61,10 @@ def resize_data():
                     #                 float(img[old_x+1, old_y+1, old_z]) + float(img[old_x+1, old_y+1, old_z+1]))
 
                     # data2 = img[x, y, old_z]
-
-                    data3 = (1-u) * img[x, y, old_z] + u *  img[x, y, old_z+1]
+                    if u != 0:
+                        data3 = (1-u) * img[x, y, old_z] + u *  img[x, y, old_z+1]
+                    else:
+                        data3 = img[x, y, old_z]
                     # print(u, img[x, y, old_z], img[x, y, old_z + 1], data3)
 
                     # if (data != 0) :
