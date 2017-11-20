@@ -57,7 +57,7 @@ class Net(nn.Module):
         conv3_layers = conv2_layers * 2
         conv4_layers = conv3_layers * 2
 
-        self._fc_nums = conv4_layers * 5 * 5 * 5
+        self._fc_nums = conv4_layers * 3 * 3 * 2
 
         self.convs = nn.Sequential (
             nn.Conv3d(1, conv1_layers, (3, 3, 3)),
@@ -83,7 +83,9 @@ class Net(nn.Module):
 
             nn.Conv3d(conv3_layers, conv4_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 4)),
+            nn.Conv3d(conv4_layers, conv4_layers, (4, 4, 4)),
+            nn.ReLU(inplace=True),
+            nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
             # nn.Dropout(0.2, inplace=True),
