@@ -124,10 +124,10 @@ def train_model(net, database, st_index, st_lr):
             # if loss.data[0] > 100:
             #     print('Odd res: ', loss.data[0])
 
-            if data_count % output_step == output_step - 1:
-                message = 'Epoch: %d, Data size: %d, Total loss: %.3f, Last loss: %.3f' % (epoch, data_count,
-                                                                                           total_loss / data_count,
-                                                                                           running_loss / (output_step+1))
+            if data_count % output_step == 0:
+                message = 'Epoch: %d, Pair id: %d, Data size: %d, Avg loss: %.3f, Last loss: %.3f' % \
+                          (epoch, database.get_training_pair_index(), data_count,
+                           total_loss / data_count, running_loss / output_step)
                 print(message)
                 logger.log(message)
                 running_loss = 0
@@ -139,11 +139,6 @@ def train_model(net, database, st_index, st_lr):
             #     break
 
         torch.save(net, 'net.pkl')
-
-        running_loss /= data_count
-        message = '=== Epoch: %d, Data size: %d, Average loss: %.3f' % (epoch, data_count, running_loss)
-        print(message)
-        logger.log(message)
 
 
 def main(pre_train, st_index, st_lr):
