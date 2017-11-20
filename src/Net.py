@@ -63,19 +63,19 @@ class Net(nn.Module):
 
             nn.Conv3d(conv1_layers, conv2_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 3)),
+            nn.Conv3d(conv2_layers, conv2_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((2, 2, 2)),
 
             nn.Conv3d(conv2_layers, conv3_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 3)),
+            nn.Conv3d(conv3_layers, conv3_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
 
             nn.Conv3d(conv3_layers, conv4_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
-            nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 3)),
+            nn.Conv3d(conv4_layers, conv4_layers, (3, 3, 4)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2)),
 

@@ -35,14 +35,16 @@ def resize_data():
         img_id = int(re_result[0])
         img = ni_img.load_img('../data/IXI-T1-raw/' + name).get_data()
 
-        new_shape = (256, 256, 140)
+        new_shape = (256, 256, 150)
 
-        if img.shape == new_shape:
+        print(count, name, img.shape)
+
+        if img.shape[0] == new_shape[0] and img.shape[1] == new_shape[1] and img.shape[2] == new_shape[2]:
             np.save('../data/IXI-T1-new/' + str(img_id), img)
             continue
 
         resize_rate = [new_shape[0]/img.shape[0], new_shape[1]/img.shape[1], new_shape[2]/img.shape[2]]
-        print(count, name, img.shape)
+
         new_img = np.zeros(shape=new_shape, dtype='int16')
         for x in range(new_shape[0]):
             for y in range(new_shape[1]):
