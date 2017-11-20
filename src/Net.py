@@ -124,9 +124,9 @@ class Net(nn.Module):
         # diff_x = x1 - x2
         # mul_x = torch.mul(x1, x2)
         # x = torch.cat((x1, x2, diff_x, mul_x), 1)
-        x = torch.cat((x1, x2, x1, x2), 1)
+        unit_x = torch.cat((x1, x2, x1, x2), 1)
 
-        x = self.units(x)
+        x = self.units(unit_x)
 
         return x
 
