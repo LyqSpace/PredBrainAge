@@ -32,6 +32,11 @@ def resize_data():
         img = ni_img.load_img('../data/IXI-T1-raw/' + name).get_data()
 
         new_shape = (256, 256, 140)
+
+        if img.shape == new_shape:
+            np.save('../data/IXI-T1-new/' + str(img_id), img)
+            continue
+
         resize_rate = [new_shape[0]/img.shape[0], new_shape[1]/img.shape[1], new_shape[2]/img.shape[2]]
         print(name, img.shape)
         new_img = np.zeros(shape=new_shape, dtype='int16')

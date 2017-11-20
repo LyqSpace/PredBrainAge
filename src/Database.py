@@ -49,7 +49,7 @@ class Database:
 
                 data_size = len(data_name_list)
                 self._training_pair_index = 0
-                training_data_size = int(0.9 * data_size)
+                training_data_size = int(0.8 * data_size)
                 training_name_list = random.sample(data_name_list, training_data_size)
 
                 unit_list = []
