@@ -17,8 +17,8 @@ def get_user_params():
 
     try:
         opts = OptionParser()
-        opts.add_option('--st_index',
-                        dest='st_index',
+        opts.add_option('--st_id',
+                        dest='st_id',
                         type=int,
                         default=0,
                         help='The beginning index of the training pair list in the training process.')
@@ -29,13 +29,13 @@ def get_user_params():
                         help='The begining learning rate in the training process.')
 
         options, args = opts.parse_args()
-        st_index = options.st_index
+        st_id = options.st_id
         st_lr = options.st_lr
 
         err_messages = []
         check_opts = True
-        if st_index < 0:
-            err_messages.append('st_index must be a non-negative integer.')
+        if st_id < 0:
+            err_messages.append('st_id must be a non-negative integer.')
             check_opts = False
 
         if st_lr <= 0 or st_lr >=1:
@@ -44,7 +44,7 @@ def get_user_params():
 
         if check_opts:
             user_params = {
-                'st_index': st_index,
+                'st_id': st_id,
                 'st_lr': st_lr
             }
             return user_params
@@ -78,7 +78,7 @@ def init_net_params(net):
             init.constant(m.bias, 0)
 
 
-def train_model(net, database, st_index, st_lr):
+def train_model(net, database, st_id, st_lr):
 
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MSELoss()
@@ -92,7 +92,7 @@ def train_model(net, database, st_index, st_lr):
 
         database.set_training_pair_index()
         if epoch == 0:
-            database.set_training_pair_index(st_index)
+            database.set_training_pair_index(st_id)
 
         running_loss = 0
         total_loss = 0
@@ -141,7 +141,7 @@ def train_model(net, database, st_index, st_lr):
         torch.save(net, 'net.pkl')
 
 
-def main(pre_train, st_index, st_lr):
+def main(pre_train, st_id, st_lr):
 
     test_mode = False
     resample = False
@@ -159,7 +159,7 @@ def main(pre_train, st_index, st_lr):
     net.cuda()
 
     print('Start training.')
-    train_model(net, database, st_index, st_lr)
+    train_model(net, database, st_id, st_lr)
 
 if __name__ == '__main__':
     # cudnn.enabled = False
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     user_params = get_user_params()
     if user_params is not None:
         main(pre_train=True,
-             st_index=user_params['st_index'],
+             st_id=user_params['st_id'],
              st_lr=user_params['st_lr'])
     else:
         raise Exception('User params is wrong.')
