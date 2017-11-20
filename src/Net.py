@@ -23,7 +23,7 @@ class Net(nn.Module):
             nn.Conv3d(conv1_layers, conv1_layers, (3, 3, 3)),
             nn.ReLU(inplace=True),
             nn.MaxPool3d((3, 3, 2))
-        }
+        )
 
         self.convs2 = nn.Sequential(
             nn.Conv3d(conv1_layers, conv2_layers, (4, 4, 4)),
