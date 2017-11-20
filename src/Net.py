@@ -9,7 +9,7 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
 
-        conv1_layers = 16
+        conv1_layers = 8
         conv2_layers = conv1_layers * 2
         conv3_layers = conv2_layers * 2
 
