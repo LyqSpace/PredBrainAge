@@ -38,17 +38,19 @@ def resize_data():
         for x in range(new_shape[0]):
             for y in range(new_shape[1]):
                 for z in range(new_shape[2]):
-                    old_x = int(x / resize_rate[0])
-                    old_y = int(y / resize_rate[1])
+                    # old_x = int(x / resize_rate[0])
+                    # old_y = int(y / resize_rate[1])
                     old_z = int(z / resize_rate[2])
-                    data = 1.0/8 * (float(img[old_x, old_y, old_z]) + float(img[old_x, old_y, old_z+1]) +
-                                    float(img[old_x, old_y+1, old_z]) + float(img[old_x, old_y+1, old_z+1]) +
-                                    float(img[old_x+1, old_y, old_z]) + float(img[old_x+1, old_y, old_z+1]) +
-                                    float(img[old_x+1, old_y+1, old_z]) + float(img[old_x+1, old_y+1, old_z+1]))
-                    data0 = img[old_x, old_y, old_z]
+                    u = z / resize_rate[2] - old_z
+                    # data = 1.0/8 * (float(img[old_x, old_y, old_z]) + float(img[old_x, old_y, old_z+1]) +
+                    #                 float(img[old_x, old_y+1, old_z]) + float(img[old_x, old_y+1, old_z+1]) +
+                    #                 float(img[old_x+1, old_y, old_z]) + float(img[old_x+1, old_y, old_z+1]) +
+                    #                 float(img[old_x+1, old_y+1, old_z]) + float(img[old_x+1, old_y+1, old_z+1]))
+                    # data2 = img[x, y, old_z]
+                    data3 = (1-u) * img[x, y, old_z] + u *  img[x, y, old_z+1]
                     # if (data != 0) :
                     #     print(data, data0)
-                    new_img[x, y, z] = data
+                    new_img[x, y, z] = data3
         # print(new_img.mean())
         # print(new_img.max())
         # print(new_img.min())
