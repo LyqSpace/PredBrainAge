@@ -4,7 +4,8 @@ data/IXI-T1-unused/
 data/IXI-T1-raw/
 
 *.pyc
-*.pkl
-*.pkl.backup
-training_name_list.txt
-test_name_list.txt
+/*.pkl
+/*.pkl.backup
+/training_name_list.txt
+/test_name_list.txt
+/training_pair_list.txt
