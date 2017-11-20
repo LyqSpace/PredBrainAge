@@ -120,7 +120,8 @@ class Database:
         for i in range(left_bound, right_bound):
             tmp_list.append(self._all_training_data_list[i][0])
 
-        self._training_name_list = random.sample(tmp_list, training_data_size)
+        # self._training_name_list = random.sample(tmp_list, training_data_size)
+        self._training_name_list = random.sample(self._all_training_data_list, training_data_size)
         self._training_data_size = len(self._training_name_list)
         self._training_data_index = 0
         self._test_loaded = True

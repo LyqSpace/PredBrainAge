@@ -17,6 +17,16 @@ def get_user_params():
 
     try:
         opts = OptionParser()
+        opts.add_option('--retrain',
+                        action='store_true',
+                        dest='retrain',
+                        default=False,
+                        help='Retrain the net.')
+        opts.add_option('--resample',
+                        action='store_true',
+                        dest='resample',
+                        default=False,
+                        help='Resample the data.')
         opts.add_option('--st_id',
                         dest='st_id',
                         type=int,
@@ -29,6 +39,8 @@ def get_user_params():
                         help='The begining learning rate in the training process.')
 
         options, args = opts.parse_args()
+        retrain = options.retrain
+        resample = options.resample
         st_id = options.st_id
         st_lr = options.st_lr
 
@@ -44,6 +56,8 @@ def get_user_params():
 
         if check_opts:
             user_params = {
+                'retrain': retrain,
+                'resample': resample,
                 'st_id': st_id,
                 'st_lr': st_lr
             }
@@ -141,15 +155,14 @@ def train_model(net, database, st_id, st_lr):
         torch.save(net, 'net.pkl')
 
 
-def main(pre_train, st_id, st_lr):
+def main(retrain, resample, st_id, st_lr):
 
     test_mode = False
-    resample = False
     print('Load database. Test mode: %s, Resample: %s' % (test_mode, resample))
     database = Database()
     database.load_database('data/', 'IXI-T1', shape=(128, 128, 75), test_mode=test_mode, resample=resample)
 
-    if pre_train and os.path.exists(r'net.pkl'):
+    if retrain is False and os.path.exists(r'net.pkl'):
         print('Construct net. Load from pkl file.')
         net = torch.load('net.pkl')
     else:
@@ -166,7 +179,8 @@ if __name__ == '__main__':
 
     user_params = get_user_params()
     if user_params is not None:
-        main(pre_train=True,
+        main(retrain=user_params['retrain'],
+             resample=user_params['resample'],
              st_id=user_params['st_id'],
              st_lr=user_params['st_lr'])
     else:
