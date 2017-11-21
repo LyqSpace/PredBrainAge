@@ -42,20 +42,20 @@ class Net(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(self._fc_nums, 512),
+            nn.Linear(self._fc_nums, 4096),
             nn.ReLU(inplace=True)
         )
         self.fc2 = nn.Sequential(
-            nn.Linear(512, 128),
+            nn.Linear(4096, 1024),
             nn.ReLU(inplace=True)
         )
 
         self.units = nn.Sequential(
-            nn.Linear(512, 128),
+            nn.Linear(4096, 1024),
             nn.ReLU(inplace=True),
-            nn.Linear(128, 16),
+            nn.Linear(1024, 256),
             nn.ReLU(inplace=True),
-            nn.Linear(16, 1)
+            nn.Linear(256, 1)
         )
 
         # net2
