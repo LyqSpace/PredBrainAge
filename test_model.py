@@ -43,8 +43,7 @@ def test_model(net, database):
 
             pred_age = age_diff + training_age
             if pred_age < 10 or pred_age > 95:
-                print(pred_age)
-                print('Odd res. Pred age: %.3f' % (pred_age,))
+                print('    Skip odd res. Pred age: %.3f' % (pred_age,))
                 continue
 
             age_sum += pred_age
