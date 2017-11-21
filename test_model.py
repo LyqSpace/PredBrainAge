@@ -1,9 +1,41 @@
 import os
 import torch
 from torch.autograd import Variable
+import matplotlib.pyplot as plt
+import numpy as np
+import random
 import torch.backends.cudnn as cudnn
 
 from src.Database import Database
+
+
+def plot_scatter(res_list, interval):
+
+    size = len(res_list)
+    for i in range(size):
+        plt.scatter(res_list[i][0], res_list[i][1], s=5, c='red')
+
+    x = np.linspace(15, 85, 100)
+    y = x
+    plt.plot(x, y, color='blue', linewidth=2)
+
+    y = x + interval
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='95% Confidence Interval')
+
+    y = x - interval
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
+
+    plt.title('Predict Brain Age Results')
+    plt.xlim(10, 90)
+    plt.ylim(10, 90)
+    plt.xlabel('Real Age')
+    plt.ylabel('Predicted Age')
+    plt.legend()
+    plt.grid(True)
+
+    plt.savefig('PredictResults.png')
+
+    print("PredictResults.png saved.")
 
 
 def test_model(net, database):
@@ -11,7 +43,7 @@ def test_model(net, database):
     database.set_test_index()
     test_data_count = 0
     total_loss = 0
-    training_data_size = 20
+    training_data_size = 10
     test_result_list = []
 
     while database.has_test_next():
@@ -73,6 +105,8 @@ def test_model(net, database):
     print('Test size: %d, MAE: %.3f, Interval 25%%: %.3f, Interval 75%%: %.3f, Interval 95%%: %.3f, ' % \
           (test_data_count, total_loss, confidence_interval_25, confidence_interval_75, confidence_interval_95))
 
+    plot_scatter(test_result_list, confidence_interval_95)
+
 
 def main():
     test_mode = True
@@ -93,6 +127,19 @@ def main():
     test_model(net, database)
 
 
+def test_plot():
+    size = 100
+    res_list = []
+    for i in range(size):
+        x = random.randrange(18, 80)
+        t = 14 * random.random() - 7
+        y = x + t
+        res_list.append((x, y))
+    plot_scatter(res_list, 8)
+
+
 if __name__ == '__main__':
     # cudnn.enabled = False
     main()
+
+
