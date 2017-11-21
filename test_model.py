@@ -58,8 +58,8 @@ def test_model(net, database):
         target_age = age_tensor.numpy()[0]
         print('Test id: %d, Img name: %s, Target age: %.3f' % (database.get_test_index(), img_name, target_age))
 
-        if target_age < 30 or target_age > 70:
-            print('Skip age < 30 or age > 70 subjects.')
+        if target_age < 25 or target_age > 70:
+            print('Skip age < 25 or age > 70 subjects.')
             continue
 
         img_tensor = img_tensor.unsqueeze(0).unsqueeze(0).float()
