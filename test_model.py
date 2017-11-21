@@ -9,7 +9,7 @@ import torch.backends.cudnn as cudnn
 from src.Database import Database
 
 
-def plot_scatter(res_list, interval):
+def plot_scatter(res_list, interval75, interval95):
 
     size = len(res_list)
     for i in range(size):
@@ -19,10 +19,16 @@ def plot_scatter(res_list, interval):
     y = x
     plt.plot(x, y, color='blue', linewidth=2)
 
-    y = x + interval
+    y = x + interval75
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='75% Confidence Interval')
+
+    y = x - interval75
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
+
+    y = x + interval95
     plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='95% Confidence Interval')
 
-    y = x - interval
+    y = x - interval95
     plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
 
     plt.title('Predict Brain Age Results')
@@ -98,19 +104,19 @@ def test_model(net, database):
         error = age_sum - target_age
         total_loss += abs(error)
 
-        test_result_list.append((target_age, abs(error)))
+        test_result_list.append((target_age, age_sum, abs(error)))
 
     total_loss /= test_data_count
 
-    test_result_list.sort(key=lambda data: data[1])
-    confidence_interval_25 = test_result_list[int(0.25 * test_data_count)][1]
-    confidence_interval_75 = test_result_list[int(0.75 * test_data_count)][1]
-    confidence_interval_95 = test_result_list[int(0.95 * test_data_count)][1]
+    test_result_list.sort(key=lambda data: data[2])
+    confidence_interval_25 = test_result_list[int(0.25 * test_data_count)][2]
+    confidence_interval_75 = test_result_list[int(0.75 * test_data_count)][2]
+    confidence_interval_95 = test_result_list[int(0.95 * test_data_count)][2]
 
-    print('Test size: %d, MAE: %.3f, Interval 25%%: %.3f, Interval 75%%: %.3f, Interval 95%%: %.3f, ' % \
+    print('Test size: %d, MAE: %.3f, Interval 25%%: %.3f, Interval 75%%: %.3f, Interval 95%%: %.3f, ' %
           (test_data_count, total_loss, confidence_interval_25, confidence_interval_75, confidence_interval_95))
 
-    plot_scatter(test_result_list, confidence_interval_95)
+    plot_scatter(test_result_list, confidence_interval_75, confidence_interval_95)
 
 
 def main():
