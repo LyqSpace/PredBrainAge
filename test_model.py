@@ -140,6 +140,7 @@ def test_plot():
 
 if __name__ == '__main__':
     # cudnn.enabled = False
+    plt.switch_backend('agg')
     main()
 
 
