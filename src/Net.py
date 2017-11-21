@@ -13,7 +13,7 @@ class Net(nn.Module):
         #
         conv1_layers = 8
         conv2_layers = conv1_layers * 2
-        conv3_layers = conv2_layers
+        conv3_layers = conv2_layers * 2
 
         self._fc_nums = conv3_layers * 4 * 4 * 5
 
@@ -42,20 +42,20 @@ class Net(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(self._fc_nums, 4096),
+            nn.Linear(self._fc_nums, 512),
             nn.ReLU(inplace=True)
         )
         self.fc2 = nn.Sequential(
-            nn.Linear(4096, 1024),
+            nn.Linear(512, 512),
             nn.ReLU(inplace=True)
         )
 
         self.units = nn.Sequential(
-            nn.Linear(4096, 1024),
+            nn.Linear(2048, 512),
             nn.ReLU(inplace=True),
-            nn.Linear(1024, 256),
+            nn.Linear(512, 128),
             nn.ReLU(inplace=True),
-            nn.Linear(256, 1)
+            nn.Linear(128, 1)
         )
 
         # net2
