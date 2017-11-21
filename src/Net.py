@@ -11,9 +11,9 @@ class Net(nn.Module):
 
         # net 1, MAE: 6.6
         #
-        conv1_layers = 8
+        conv1_layers = 64
         conv2_layers = conv1_layers * 2
-        conv3_layers = conv2_layers * 2
+        conv3_layers = conv2_layers
 
         self._fc_nums = conv3_layers * 4 * 4 * 5
 
