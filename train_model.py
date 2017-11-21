@@ -173,6 +173,7 @@ def main(retrain, resample, st_id, st_lr):
         net = Net()
         # init_net_params(net)
 
+    net.float()
     net.cuda()
 
     print('Start training.')
