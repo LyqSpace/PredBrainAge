@@ -13,17 +13,17 @@ def plot_scatter(res_list, interval75, interval95):
 
     size = len(res_list)
     for i in range(size):
-        plt.scatter(res_list[i][0], res_list[i][2], s=5, c='red')
+        plt.scatter(res_list[i][0], res_list[i][1], s=5, c='red')
 
     x = np.linspace(15, 85, 100)
     y = x
-    plt.plot(x, y, color='blue', linewidth=2)
+    plt.plot(x, y, color='blue', linewidth=1)
 
     y = x + interval75
-    plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='75% Confidence Interval')
+    plt.plot(x, y, color='green', linewidth=1, linestyle='--', label='75% Confidence Interval')
 
     y = x - interval75
-    plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
+    plt.plot(x, y, color='green', linewidth=1, linestyle='--')
 
     y = x + interval95
     plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='95% Confidence Interval')
