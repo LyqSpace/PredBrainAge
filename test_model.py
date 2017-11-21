@@ -121,6 +121,7 @@ def main():
     else:
         raise Exception('Test the net need net.kpl file.')
 
+    net.eval()
     net.cuda()
 
     print('Start testing.')
