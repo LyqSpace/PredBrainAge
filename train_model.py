@@ -118,16 +118,16 @@ def train_model(net, database, st_id, st_lr):
 
             img_name1, img_tensor1, img_name2, img_tensor2, age_diff_tensor = database.load_training_pair_next()
 
-            img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).double().cuda())
-            img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).double().cuda())
-            age_diff_tensor = Variable(age_diff_tensor.double().cuda())
+            img_tensor1 = Variable(img_tensor1.unsqueeze(0).unsqueeze(0).float().cuda())
+            img_tensor2 = Variable(img_tensor2.unsqueeze(0).unsqueeze(0).float().cuda())
+            age_diff_tensor = Variable(age_diff_tensor.float().cuda())
 
             output = net(img_tensor1, img_tensor2)
             # print('output: ', output)
             # print('target: ', age_tensor)
-            output_double = output.data.cpu().numpy()[0][0]
-            age_diff_double = age_diff_tensor.data.cpu().numpy()[0]
-            print(database.get_training_pair_index(), img_name1, img_name2, age_diff_double, output_double)
+            output_float = output.data.cpu().numpy()[0][0]
+            age_diff_float = age_diff_tensor.data.cpu().numpy()[0]
+            print(database.get_training_pair_index(), img_name1, img_name2, age_diff_float, output_float)
 
             optimizer.zero_grad()
             loss = criterion(output, age_diff_tensor)
@@ -173,7 +173,6 @@ def main(retrain, resample, st_id, st_lr):
         net = Net()
         # init_net_params(net)
 
-    net.double()
     net.cuda()
 
     print('Start training.')
