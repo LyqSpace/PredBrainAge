@@ -13,7 +13,7 @@ def plot_scatter(res_list, interval75, interval95):
 
     size = len(res_list)
     for i in range(size):
-        plt.scatter(res_list[i][0], res_list[i][1], s=5, c='red')
+        plt.scatter(res_list[i][0], res_list[i][2], s=5, c='red')
 
     x = np.linspace(15, 85, 100)
     y = x
