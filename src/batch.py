@@ -145,6 +145,22 @@ def delete_data(data_id):
     print(count)
     save_list(new_list, '../training_name_list.txt')
 
+
+def normalize_npy():
+    path = '../data/IXI-T1-small/'
+    data_name_list = os.listdir('../data/IXI-T1-small/')
+    count = 0
+    for name in data_name_list:
+        print(count)
+        count += 1
+
+        data = np.load(path + name)
+        _max = np.max(data)
+        _min = np.min(data)
+        data = (data - _min) / (_max - _min)
+        np.save('../data/IXI-T1/' + name, data)
+
+
 if __name__ == '__main__':
     # delete_data(533)
-    resize_data(347)
+    normalize_npy()
