@@ -172,7 +172,7 @@ def main(retrain, resample, st_id, st_lr):
     else:
         print('Construct net. Create a new network.')
         net = Net()
-        # init_net_params(net)
+        init_net_params(net)
 
     net.float()
     net.train()
