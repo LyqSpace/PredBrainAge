@@ -98,7 +98,7 @@ def train_model(net, database, st_id, st_lr):
     criterion = nn.MSELoss()
     optimizer = optim.RMSprop(net.parameters(), lr=st_lr, alpha=0.9)
     # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10000, gamma=0.5)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=100000, gamma=0.5)
     output_step = 10
 
     logger = Logger('train', 'train.log')
