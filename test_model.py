@@ -43,7 +43,8 @@ def test_model(net, database):
 
             pred_age = age_diff + training_age
             if pred_age < 10 or pred_age > 95:
-                print('Odd res. Pred age: %.3f' % pred_age)
+                print(pred_age)
+                print('Odd res. Pred age: %.3f' % (pred_age,))
                 continue
 
             age_sum += pred_age
@@ -66,9 +67,9 @@ def test_model(net, database):
     total_loss /= test_data_count
 
     test_result_list.sort(key=lambda data: data[1])
-    confidence_interval_25 = test_result_list[int(0.25 * test_data_count)]
-    confidence_interval_75 = test_result_list[int(0.75 * test_data_count)]
-    confidence_interval_95 = test_result_list[int(0.95 * test_data_count)]
+    confidence_interval_25 = test_result_list[int(0.25 * test_data_count)][1]
+    confidence_interval_75 = test_result_list[int(0.75 * test_data_count)][1]
+    confidence_interval_95 = test_result_list[int(0.95 * test_data_count)][1]
 
     print('Test size: %d, MAE: %.3f, Interval 25%%: %.3f, Interval 75%%: %.3f, Interval 95%%: %.3f, ' % \
           (test_data_count, total_loss, confidence_interval_25, confidence_interval_75, confidence_interval_95))
