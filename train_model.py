@@ -172,6 +172,8 @@ def main(retrain, resample, st_id, st_lr):
         print('Construct net. Create a new network.')
         net = Net()
         # init_net_params(net)
+
+    net.double()
     net.cuda()
 
     print('Start training.')
