@@ -122,16 +122,20 @@ class Net(nn.Module):
         x1 = self.convs1(x1)
         x1 = self.convs2(x1)
         # x1 = F.dropout(self.convs3(x1), p=0.3, training=self.training)
+        x1 = self.convs3(x1)
         x1 = x1.view(1, self._fc_nums)
         # x1 = F.dropout(self.fc1(x1), p=0.3, training=self.training)
-        x1 = F.dropout(self.fc2(x1), p=0.2, training=self.training)
+        x1 = self.fc1(x1)
+        x1 = F.dropout(self.fc2(x1), p=0.1, training=self.training)
 
         x2 = self.convs1(x2)
         x2 = self.convs2(x2)
         # x2 = F.dropout(self.convs3(x2), p=0.3, training=self.training)
+        x2 = self.convs3(x2)
         x2 = x2.view(1, self._fc_nums)
         # x2 = F.dropout(self.fc1(x2), p=0.3, training=self.training)
-        x2 = F.dropout(self.fc2(x2), p=0.2, training=self.training)
+        x2 = self.fc1(x2)
+        x2 = F.dropout(self.fc2(x2), p=0.1, training=self.training)
 
         # net1
         # x = torch.cat((x1, x2), 1)
