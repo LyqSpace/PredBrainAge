@@ -1,11 +1,10 @@
 .idea
 data/IXI-T1/
-data/IXI-T1-small/
-data/IXI-T1-large/
-data/IXI-T1-new/
-data/IXI-T1-old/
 data/IXI-T1-unused/
-data/IXI-T1-raw/
+data/IXI-T1-raw-npy/
+data/IXI-T1-small-npy/
+data/IXI-T1-raw-niigz/
+data/*.csv
 experiments/
 
 *.pyc
@@ -15,7 +14,4 @@ experiments/
 /*.pkl
 /*.pkl.backup
 /*.pkl.best
-/training_name_list.txt
-/test_name_list.txt
-/training_pair_list.txt
 

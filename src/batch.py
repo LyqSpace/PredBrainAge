@@ -1,8 +1,10 @@
 import subprocess
 import os
 import nilearn.image as ni_img
+import nibabel.affines as ni_affine
 import re
 import numpy as np
+import src.utils as utils
 
 
 def get_unused_list():
@@ -18,15 +20,16 @@ def rm_unused_data():
     f = open('../data/IXI-T1-unused_list.txt', 'r')
 
     for line in f:
-        subprocess.call('rm ../data/IXI-T1-raw/' + line.strip(), shell=True)
+        subprocess.call('rm ../data/IXI-T1-raw-niigz/' + line.strip(), shell=True)
 
     f.close()
 
 
 def resize_data(st_id = 0):
 
-    data_name_list = os.listdir('../data/IXI-T1-raw')
+    data_name_list = os.listdir('../data/IXI-T1-raw-niigz')
     count = 0
+
     for name in data_name_list:
 
         count += 1
@@ -34,55 +37,27 @@ def resize_data(st_id = 0):
         if count <= st_id:
             continue
 
+        print(count, name, end='')
+
         re_result = re.findall(r'IXI(\d+)-', name)
         img_id = int(re_result[0])
-        img = ni_img.load_img('../data/IXI-T1-raw/' + name).get_data()
+        img = ni_img.load_img('../data/IXI-T1-raw-niigz/' + name)
 
-        new_shape = (256, 256, 150)
+        img_affine = ni_img.resample_img(img, target_affine=np.eye(3) * 4)
+        print(img_affine.get_fdata().shape)
 
-        print(count, name, img.shape)
+        # img_data = img_affine.get_data()
+        #
+        # slice_0 = img_data[50, :, :]
+        # slice_1 = img_data[:, 70, :]
+        # slice_2 = img_data[:, :, 70]
+        # utils.show_slices([slice_0, slice_1, slice_2], 'affine')
+        #
+        # print(img_affine.shape)
+        #
+        # continue
 
-        if img.shape[0] == new_shape[0] and img.shape[1] == new_shape[1] and img.shape[2] == new_shape[2]:
-            new_img = np.zeros(shape=new_shape, dtype='int16') # Magic: To reduce the npy file size.
-            np.save('../data/IXI-T1-new/' + str(img_id), new_img)
-            continue
-
-        resize_rate = [new_shape[0]/img.shape[0], new_shape[1]/img.shape[1], new_shape[2]/img.shape[2]]
-
-        new_img = np.zeros(shape=new_shape, dtype='int16')
-        for x in range(new_shape[0]):
-            for y in range(new_shape[1]):
-                for z in range(new_shape[2]):
-                    # old_x = int(x / resize_rate[0])
-                    # old_y = int(y / resize_rate[1])
-                    u = (z+1) / resize_rate[2] - 1
-                    old_z = int(u)
-                    u -= old_z
-
-                    # data = 1.0/8 * (float(img[old_x, old_y, old_z]) + float(img[old_x, old_y, old_z+1]) +
-                    #                 float(img[old_x, old_y+1, old_z]) + float(img[old_x, old_y+1, old_z+1]) +
-                    #                 float(img[old_x+1, old_y, old_z]) + float(img[old_x+1, old_y, old_z+1]) +
-                    #                 float(img[old_x+1, old_y+1, old_z]) + float(img[old_x+1, old_y+1, old_z+1]))
-
-                    # data2 = img[x, y, old_z]
-                    if u != 0:
-                        data3 = (1-u) * img[x, y, old_z] + u * img[x, y, old_z+1]
-                    else:
-                        data3 = img[x, y, old_z]
-                    # print(u, img[x, y, old_z], img[x, y, old_z + 1], data3)
-
-                    # if (data != 0) :
-                    #     print(data, data0)
-                    new_img[x, y, z] = data3
-        # print(new_img.mean())
-        # print(new_img.max())
-        # print(new_img.min())
-        # print(img.mean())
-        # print(img.max())
-        # print(img.min())
-        # new_img = new_img - new_img.mean()
-
-        np.save('../data/IXI-T1-new/' + str(img_id), new_img)
+        np.save('../data/IXI-T1-small-npy/' + str(img_id), img_affine.get_fdata())
 
 
 def get_training_name_list():
@@ -147,20 +122,31 @@ def delete_data(data_id):
 
 
 def normalize_npy():
-    path = '../data/IXI-T1-small/'
-    data_name_list = os.listdir('../data/IXI-T1-small/')
+    path = '../data/IXI-T1-small-npy/'
+    data_name_list = os.listdir(path)
     count = 0
     for name in data_name_list:
         print(count)
         count += 1
 
         data = np.load(path + name)
-        _max = np.max(data)
-        _min = np.min(data)
-        data = (data - _min) / (_max - _min)
-        np.save('../data/IXI-T1/' + name, data)
+        new_data = (data - data.mean()) / data.std()
+        np.save('../data/IXI-T1/' + name, new_data)
+
+        # slice_0 = data[50, :, :]
+        # slice_1 = data[:, 70, :]
+        # slice_2 = data[:, :, 70]
+        # utils.show_slices([slice_0, slice_1, slice_2])
+        #
+        # slice_0 = new_data[50, :, :]
+        # slice_1 = new_data[:, 70, :]
+        # slice_2 = new_data[:, :, 70]
+        # utils.show_slices([slice_0, slice_1, slice_2])
 
 
 if __name__ == '__main__':
     # delete_data(533)
+    # normalize_npy()
+
+    resize_data()
     normalize_npy()

@@ -1,12 +1,12 @@
 import os
-import torch
-from torch.autograd import Variable
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
-import random
-import torch.backends.cudnn as cudnn
+import torch
+from torch.autograd import Variable
 
-from src.Database import Database
+from src.DNN.Database import Database
 
 
 def plot_scatter(res_list, interval75, interval95):
