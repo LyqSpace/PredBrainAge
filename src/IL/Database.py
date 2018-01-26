@@ -19,12 +19,13 @@ class Database:
         self._dataset_df = None
         self._groups_df = None
         self._cur_group = None
+        self._cur_group_loaded = False
         self._group_index = 0
         self._group_end = 0
 
         self._data_index = 0
 
-    def load_database(self, data_path, dataset_name, mode='training', resample=True):
+    def load_database(self, data_path, dataset_name, mode='training', resample=False):
 
         print('Load database. Dataset: {0}. Mode: {1}. Resample: {2}. '.format(
             dataset_name, mode, resample), end='')
@@ -76,6 +77,7 @@ class Database:
             self._groups_df = pd.read_csv(data_path + 'groups.csv')
             self._group_index = self._groups_df['GROUP_AGE'].min()
             self._group_end = self._groups_df['GROUP_AGE'].max() + 1
+            self._cur_group_loaded = False
 
             print('Done.')
 
@@ -116,6 +118,18 @@ class Database:
         else:
             raise Exception(self._dataset_name + ' dataset is not found.')
 
+    def get_group_size(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        return self._groups_df['GROUP_AGE'].max() + 1
+
+    def get_data_from_group_size(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        if self._cur_group_loaded is False:
+            raise Exception('Current group must be loaded first.')
+        return self._cur_group.shape[0]
+
     def get_data_index(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
@@ -146,6 +160,7 @@ class Database:
         self._cur_group = self._groups_df.query(query_str)
         self._group_index += 1
         self._data_index = 0
+        self._cur_group_loaded = True
 
         return self._cur_group
 

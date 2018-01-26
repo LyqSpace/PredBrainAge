@@ -1,5 +1,6 @@
 from scipy import ndimage
 import numpy as np
+import matplotlib.pyplot as plt
 
 from src.IL.Database import Database
 import src.utils as utils
@@ -11,16 +12,22 @@ class InductiveLearning:
         self._database = Database()
 
         self._divisor = 2
-        self._log_c = np.log(2 ** 3)
-        self._block_anchors = np.array([[0, 0.6], [0.4, 1]])
         self._divide_level_limit = 4
+        self._block_anchors = np.array([[0, 0.6], [0.4, 1]])
+        self._child_num = self._divisor ** 3
+        self._block_num = 0
+        for i in range(self._divide_level_limit):
+            self._block_num += self._child_num ** i
+
+        self._block_attr = np.zeros((self._block_num, 8))
+        self._block_significant = np.zeros(self._block_num, dtype=bool)
 
         self._zoom_rates = np.arange(0.7, 1.4, 0.1)
 
     def load_group(self):
         pass
 
-    def train(self, data_path, dataset_name, resample=True):
+    def train(self, data_path, dataset_name, resample=False):
 
         self._database.load_database(data_path, dataset_name, mode='training', resample=resample)
 
@@ -35,7 +42,8 @@ class InductiveLearning:
             _, template_data, _ = self._database.get_next_data_from_group()
             template_am = utils.get_attention_map(template_data)
 
-            # utils.show_3Ddata(template_am)
+            data_from_group_num = self._database.get_data_from_group_size() - 1
+            group_block_attr = np.array([data_from_group_num, self._block_num, 8])
 
             while self._database.has_next_data_from_group():
 
@@ -43,13 +51,19 @@ class InductiveLearning:
                 matched_am = utils.get_attention_map(matched_data)
                 self._induce(0, template_data, template_am, matched_data, matched_am)
 
+                group_block_attr[self._database.get_data_index() - 1] = self._block_attr
+
+            np.save('experiments/group_block_attr/' + group_age + '.npy', group_block_attr)
+
         print('Done.')
 
     def _induce(self, block_id, template_data, template_am, matched_data, matched_am):
 
         divide_level = 0
-        if block_id > 0:
-            divide_level = np.floor(np.log(block_id) / self._log_c) + 1
+        father_id = block_id
+        while father_id > 0:
+            father_id = int((father_id - 1) / self._child_num)
+            divide_level += 1
 
         if divide_level == self._divide_level_limit:
             return
@@ -69,57 +83,68 @@ class InductiveLearning:
                                                       matched_center[1] * zoom_rate1,
                                                       matched_center[2] * zoom_rate2])
 
-                    offset = template_center - zoomed_matched_center + 0.5
-                    offset = offset.astype(int)
+                    offset = (template_center - zoomed_matched_center + 0.5).astype(int)
 
-                    div = utils.get_div(template_am, zoomed_matched_am, offset)
+                    inter_am = utils.get_inter_data(template_am, zoomed_matched_am, offset)
+                    div = utils.get_div(template_am, inter_am)
+
                     if best_div > div:
                         best_div = div
                         best_zoom_rate[0] = zoom_rate0
                         best_zoom_rate[1] = zoom_rate1
                         best_zoom_rate[2] = zoom_rate2
 
-        print(best_zoom_rate, best_div)
-
         zoomed_matched_am = ndimage.zoom(matched_am, [best_zoom_rate[0], best_zoom_rate[1], best_zoom_rate[2]])
         zoomed_matched_data = ndimage.zoom(matched_data, [best_zoom_rate[0], best_zoom_rate[1], best_zoom_rate[2]])
 
-        sub_block_id = block_id * 8 - 1
+        best_matched_center = matched_center * best_zoom_rate
+        best_offset = (template_center - best_matched_center + 0.5).astype(int)
+
+        inter_am = utils.get_inter_data(template_am, zoomed_matched_am, best_offset)
+        inter_data = utils.get_inter_data(template_data, zoomed_matched_data, best_offset)
+
+        intensity_div = template_data.mean() - zoomed_matched_data.mean()
+
+        self._block_attr[block_id] = np.r_[best_offset, best_zoom_rate, intensity_div, best_div]
+
+        print(block_id, self._block_attr[block_id], template_am.shape, inter_am.shape)
+
+        if divide_level > 1:
+
+            # utils.show_3Ddata(template_am, 'Template')
+            # utils.show_3Ddata(zoomed_matched_am, 'Zoomed Matched')
+            utils.show_3Ddata_comp(template_am, inter_am, 'Comp')
+
+        sub_block_id = block_id * 8
 
         for block_anchor0 in self._block_anchors:
 
-            sub_template_anchor0 = block_anchor0 * template_am.shape[0]
-            sub_matched_anchor0 = block_anchor0 * matched_am.shape[0]
+            sub_anchor0 = (block_anchor0 * template_am.shape[0]).astype(int)
 
             for block_anchor1 in self._block_anchors:
 
-                sub_template_anchor1 = block_anchor1 * template_am.shape[1]
-                sub_matched_anchor1 = block_anchor1 * matched_am.shape[1]
+                sub_anchor1 = (block_anchor1 * template_am.shape[1]).astype(int)
 
                 for block_anchor2 in self._block_anchors:
 
-                    sub_template_anchor2 = block_anchor2 * template_am.shape[2]
-                    sub_matched_anchor2 = block_anchor2 * matched_am.shape[2]
+                    sub_anchor2 = (block_anchor2 * template_am.shape[2]).astype(int)
 
                     sub_template_data = template_data[
-                                            sub_template_anchor0[0]:sub_template_anchor0[1],
-                                            sub_template_anchor1[0]:sub_template_anchor1[1],
-                                            sub_template_anchor2[0]:sub_template_anchor2[1]]
-
+                                            sub_anchor0[0]:sub_anchor0[1],
+                                            sub_anchor1[0]:sub_anchor1[1],
+                                            sub_anchor2[0]:sub_anchor2[1]]
                     sub_template_am = template_am[
-                                            sub_template_anchor0[0]:sub_template_anchor0[1],
-                                            sub_template_anchor1[0]:sub_template_anchor1[1],
-                                            sub_template_anchor2[0]:sub_template_anchor2[1]]
-                    
+                                            sub_anchor0[0]:sub_anchor0[1],
+                                            sub_anchor1[0]:sub_anchor1[1],
+                                            sub_anchor2[0]:sub_anchor2[1]]
                     sub_matched_data = zoomed_matched_data[
-                                            sub_matched_anchor0[0]:sub_matched_anchor0[1],
-                                            sub_matched_anchor1[0]:sub_matched_anchor1[1],
-                                            sub_matched_anchor2[0]:sub_matched_anchor2[1]]
-
+                                            sub_anchor0[0]:sub_anchor0[1],
+                                            sub_anchor1[0]:sub_anchor1[1],
+                                            sub_anchor2[0]:sub_anchor2[1]]
                     sub_matched_am = zoomed_matched_am[
-                                            sub_matched_anchor0[0]:sub_matched_anchor0[1],
-                                            sub_matched_anchor1[0]:sub_matched_anchor1[1],
-                                            sub_matched_anchor2[0]:sub_matched_anchor2[1]]
+                                            sub_anchor0[0]:sub_anchor0[1],
+                                            sub_anchor1[0]:sub_anchor1[1],
+                                            sub_anchor2[0]:sub_anchor2[1]]
 
                     sub_block_id += 1
 
