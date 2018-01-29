@@ -25,7 +25,7 @@ def rm_unused_data():
     f.close()
 
 
-def resize_data(st_id = 0):
+def resize_data(st_id = 0, file_name=None):
 
     data_name_list = os.listdir('../data/IXI-T1-raw-niigz')
     count = 0
@@ -35,6 +35,9 @@ def resize_data(st_id = 0):
         count += 1
 
         if count <= st_id:
+            continue
+
+        if file_name is not None and name != file_name:
             continue
 
         print(count, name, end='')
@@ -121,13 +124,16 @@ def delete_data(data_id):
     save_list(new_list, '../training_name_list.txt')
 
 
-def normalize_npy():
+def normalize_npy(file_name=None):
     path = '../data/IXI-T1-small-npy/'
     data_name_list = os.listdir(path)
     count = 0
     for name in data_name_list:
         print(count)
         count += 1
+
+        if file_name is not None and file_name != name:
+            continue
 
         data = np.load(path + name)
         new_data = (data - data.mean()) / data.std()
@@ -144,9 +150,18 @@ def normalize_npy():
         # utils.show_slices([slice_0, slice_1, slice_2])
 
 
+def rename():
+    path = '../experiments/group_block_attr/'
+    for i in range(20, 87):
+        x = np.load(path + str(i) + '.npy')
+        np.save(path+str(i-1)+'.npy', x)
+
+
 if __name__ == '__main__':
     # delete_data(533)
     # normalize_npy()
 
-    resize_data()
-    normalize_npy()
+    # resize_data(file_name='IXI533-Guys-1066-T1.nii.gz')
+    # normalize_npy(file_name='533.npy')
+    # rename()
+    pass

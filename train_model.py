@@ -9,49 +9,45 @@ def get_user_params():
 
     try:
         opts = OptionParser()
-        opts.add_option('--retrain',
-                        action='store_true',
-                        dest='retrain',
-                        default=False,
-                        help='Retrain the net.')
         opts.add_option('--resample',
                         action='store_true',
                         dest='resample',
                         default=False,
                         help='Resample the data.')
-        opts.add_option('--st_id',
-                        dest='st_id',
+        opts.add_option('--st_group',
+                        dest='st_group',
                         type=int,
                         default=0,
-                        help='The beginning index of the training pair list in the training process.')
-        opts.add_option('--st_lr',
-                        dest='st_lr',
-                        type=float,
-                        default=1e-4,
-                        help='The begining learning rate in the training process.')
+                        help='The beginning group age in the training process.')
+        opts.add_option('--divide',
+                        action='store_true',
+                        dest='divide',
+                        default=False,
+                        help='Divide process.')
+        opts.add_option('--induce',
+                        action="store_true",
+                        dest='induce',
+                        default=False,
+                        help='Induce process.')
 
         options, args = opts.parse_args()
-        retrain = options.retrain
         resample = options.resample
-        st_id = options.st_id
-        st_lr = options.st_lr
+        st_group = options.st_group
+        divide = options.divide
+        induce = options.induce
 
         err_messages = []
         check_opts = True
-        if st_id < 0:
-            err_messages.append('st_id must be a non-negative integer.')
-            check_opts = False
-
-        if st_lr <= 0 or st_lr >=1:
-            err_messages.append('st_lr must be a float in (0,1).')
+        if st_group < 0:
+            err_messages.append('st_group must be a non-negative integer.')
             check_opts = False
 
         if check_opts:
             user_params = {
-                'retrain': retrain,
                 'resample': resample,
-                'st_id': st_id,
-                'st_lr': st_lr
+                'st_group': st_group,
+                'divide': divide,
+                'induce': induce
             }
             return user_params
         else:
@@ -65,10 +61,18 @@ def get_user_params():
         return None
 
 
-def main(resample):
+def main(st_group, resample, divide, induce):
+
+    data_path = 'data/'
+    dataset_name = 'IXI-T1'
 
     inductive_model = InductiveLearning()
-    inductive_model.train('data/', 'IXI-T1', resample=resample)
+
+    if divide:
+        inductive_model.train(data_path, dataset_name, st_group=st_group, resample=resample)
+
+    if induce:
+        inductive_model.induce(data_path, dataset_name)
 
 
 if __name__ == '__main__':
@@ -76,6 +80,9 @@ if __name__ == '__main__':
     user_params = get_user_params()
 
     if user_params is not None:
-        main(resample=user_params['resample'])
+        main(st_group=user_params['st_group'],
+             resample=user_params['resample'],
+             divide=user_params['divide'],
+             induce=user_params['induce'])
     else:
         raise Exception('User params are wrong.')

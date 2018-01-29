@@ -118,7 +118,7 @@ class Database:
         else:
             raise Exception(self._dataset_name + ' dataset is not found.')
 
-    def get_group_size(self):
+    def get_group_end(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
         return self._groups_df['GROUP_AGE'].max() + 1
