@@ -46,7 +46,7 @@ def show_3Ddata(data, title=None):
     slider_idx2.on_changed(update_slider_idx2)
 
     plt.show()
-    plt.pause(30)
+    plt.pause(10)
     plt.close()
 
 
@@ -240,29 +240,30 @@ def get_attention_map(img):
     return attention_map
 
 
-def get_inter_data(data0, data1, offset=np.zeros(3)):
+def get_template_proj(template_data, matched_data, offset=np.zeros(3,dtype=int)):
 
-    data0_anchor_st = np.array([0, 0, 0], dtype=int)
-    data0_anchor_ed = np.array(data0.shape, dtype=int)
-    data1_anchor_st = np.array([0, 0, 0], dtype=int) + offset
-    data1_anchor_ed = np.array(data1.shape, dtype=int) + offset
+    template_data_anchor_st = np.array([0, 0, 0], dtype=int)
+    template_data_anchor_ed = np.array(template_data.shape, dtype=int)
+    matched_data_anchor_st = np.array([0, 0, 0], dtype=int) + offset
+    matched_data_anchor_ed = np.array(matched_data.shape, dtype=int) + offset
 
-    inter_anchor_st = np.maximum(data0_anchor_st, data1_anchor_st)
-    inter_anchor_ed = np.minimum(data0_anchor_ed, data1_anchor_ed)
+    inter_anchor_st = np.maximum(template_data_anchor_st, matched_data_anchor_st)
+    inter_anchor_ed = np.minimum(template_data_anchor_ed, matched_data_anchor_ed)
 
     ROI_anchor_st = inter_anchor_st - offset
     ROI_anchor_ed = inter_anchor_ed - offset
 
-    data1_inter = np.zeros(data0.shape)
-    data1_inter[
+    empty_value = matched_data.min()
+    matched_data_proj = np.ones(template_data.shape) * empty_value
+    matched_data_proj[
         inter_anchor_st[0]:inter_anchor_ed[0],
         inter_anchor_st[1]:inter_anchor_ed[1],
-        inter_anchor_st[2]:inter_anchor_ed[2]] = data1[
+        inter_anchor_st[2]:inter_anchor_ed[2]] = matched_data[
                                                      ROI_anchor_st[0]:ROI_anchor_ed[0],
                                                      ROI_anchor_st[1]:ROI_anchor_ed[1],
                                                      ROI_anchor_st[2]:ROI_anchor_ed[2]]
 
-    return data1_inter
+    return matched_data_proj
 
 
 def get_union_data(data0, data1):
@@ -425,21 +426,43 @@ def get_zoom_parameter(template_data, matched_data, axis):
         for i in range(matched_1D_len):
             matched_1D[i] = matched_data[:,:,i].mean()
 
-    template_1D_center = ndimage.measurements.center_of_mass(template_1D)
-    matched_1D_center = ndimage.measurements.center_of_mass(matched_1D)
+    template_1D_center = int((ndimage.measurements.center_of_mass(template_1D))[0])
+    matched_1D_center = int((ndimage.measurements.center_of_mass(matched_1D))[0])
+    
+    if (template_1D_center == 0 or template_1D_center == template_1D_len - 1 or
+        matched_1D_center == 0 or matched_1D_center == matched_1D_len - 1):
+        return 1, template_1D_center, matched_1D_center
 
     template_1D_left = template_1D[:template_1D_center]
-    template_1D_right = template_1D[template_1D_center:]
-
     matched_1D_left = matched_1D[:matched_1D_center]
+    template_1D_left_center = int((ndimage.measurements.center_of_mass(template_1D_left))[0])
+    matched_1D_left_center = int((ndimage.measurements.center_of_mass(matched_1D_left))[0])
+
+    template_1D_right = template_1D[template_1D_center:]
     matched_1D_right = matched_1D[matched_1D_center:]
+    template_1D_right_center = int((ndimage.measurements.center_of_mass(template_1D_right))[0])
+    matched_1D_right_center = int((ndimage.measurements.center_of_mass(matched_1D_right))[0])
+    
+    # print('all  ', template_1D_center, matched_1D_center)
+    # print('left ', template_1D_left_center, matched_1D_left_center)
+    # print('right ', template_1D_right_center, matched_1D_right_center)
+    
+    zoom_left = (template_1D_left_center - template_1D_center) / (matched_1D_left_center - matched_1D_center)
+    zoom_right = (template_1D_right_center + 1) / (matched_1D_right_center + 1)
+    zoom_avg = (zoom_left + zoom_right) / 2
 
-    pass
+    return zoom_avg, template_1D_center, matched_1D_center
 
 
-def get_div(template_am, matched_am):
+def get_div(template_am, matched_am, show=False):
 
-    div = (abs(template_am - matched_am)).mean()
+    template_am_gaussian = ndimage.gaussian_filter(template_am, sigma=1)
+    matched_am_gaussian = ndimage.gaussian_filter(matched_am, sigma=1)
+
+    if show:
+        show_3Ddata_comp(template_am_gaussian, matched_am_gaussian, 'gaussian')
+
+    div = (abs(template_am_gaussian - matched_am_gaussian)).mean()
 
     return div
 

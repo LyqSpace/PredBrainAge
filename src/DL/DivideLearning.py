@@ -13,13 +13,13 @@ class DivideLearning:
 
         self._divisor = 2
         self._divide_level_limit = 5
-        self._block_anchors = np.array([[0, 0.6], [0.4, 1]])
+        self._block_overlap = 0.1
         self._child_num = self._divisor ** 3
         self._block_num = 0
         for i in range(self._divide_level_limit):
             self._block_num += self._child_num ** i
 
-        self._attr_num = 9
+        self._attr_num = 10
         self._block_attr = np.zeros((self._block_num, self._attr_num))
         self._block_significant = np.zeros(self._block_num, dtype=bool)
 
@@ -76,72 +76,91 @@ class DivideLearning:
         if divide_level == self._divide_level_limit:
             return
 
-        zoom = np.zeros(3)
-        offset = np.zeros(3)
+        zoom_rate = np.zeros(3)
+        template_center = np.zeros(3, dtype=int)
+        matched_center = np.zeros(3, dtype=int)
         for i in range(3):
-            zoom[i], offset[i] = utils.get_zoom_parameter(template_am, matched_am, i)
-
-        zoom_rate = affine_params[0:3]
-        offset = affine_params[3:6].astype(int)
-
-        utils.show_3Ddata_comp(template_am, matched_am, 'Comp')
+            zoom_rate[i], template_center[i], matched_center[i] = utils.get_zoom_parameter(template_am, matched_am, i)
 
         zoomed_matched_am = ndimage.zoom(matched_am, zoom_rate)
         zoomed_matched_data = ndimage.zoom(matched_data, zoom_rate)
+        zoomed_matched_center = (matched_center * zoom_rate).astype(int)
+        offset = template_center - zoomed_matched_center
 
-        zoomed_matched_am_inter = utils.get_inter_data(template_am, zoomed_matched_am, offset)
-        zoomed_matched_data_inter = utils.get_inter_data(template_data, zoomed_matched_data, offset)
+        # utils.show_3Ddata_comp(template_am, matched_am, 'PRE')
+        # utils.show_3Ddata_comp(template_am, zoomed_matched_am, 'AFTER')
 
-        am_div = utils.get_div(template_am, zoomed_matched_am_inter)
-        intensity_mean = min(template_am.mean(), zoomed_matched_am_inter.mean())
-        flag = 1
-        if intensity_mean < am_div:
-            flag = 0
+        zoomed_matched_am_proj = utils.get_template_proj(template_am, zoomed_matched_am, offset)
+        zoomed_matched_data_proj = utils.get_template_proj(template_data, zoomed_matched_data, offset)
 
-        self._block_attr[block_id] = np.r_[affine_params, intensity_mean, am_div, flag]
+        am_mean = template_am.mean()
+        am_div = utils.get_div(template_am, zoomed_matched_am_proj)
+        am_significant = (am_mean + 1e-8) / (am_div + 1e-8)
+        intensity_mean = template_data.mean() - zoomed_matched_data_proj.mean()
 
-        print(block_id, self._block_attr[block_id], template_am.shape, zoomed_matched_am_inter.shape)
 
-        # if block_id > 74:
+        self._block_attr[block_id] = np.r_[zoom_rate, offset, intensity_mean, am_mean, am_div, am_significant]
 
-            # utils.show_3Ddata(template_am, 'Template')
-            # utils.show_3Ddata(zoomed_matched_am, 'Zoomed Matched')
-        utils.show_3Ddata_comp(template_data, zoomed_matched_data_inter, 'Comp')
-            # pass
+        # print(block_id, self._block_attr[block_id])
+        # print(template_am.shape, template_center, matched_am.shape, matched_center)
+
+        # if divide_level > 2:
+        #     utils.show_3Ddata_comp(template_am, zoomed_matched_am_proj, 'PROJECTION')
 
         if divide_level == self._divide_level_limit - 1:
             return
-
+        
         sub_block_id = block_id * 8
 
-        for block_anchor0 in self._block_anchors:
+        for i in range(2):
 
-            sub_anchor0 = (block_anchor0 * template_am.shape[0]).astype(int)
+            template_block_overlap = int(self._block_overlap * template_am.shape[0])
+            matched_block_overlap = int(self._block_overlap * matched_am.shape[0])
+            if i == 0:
+                template_block_anchor0 = [0, template_center[0] + template_block_overlap]
+                matched_block_anchor0 = [0, zoomed_matched_center[0] + matched_block_overlap]
+            else:
+                template_block_anchor0 = [template_center[0] - template_block_overlap, template_am.shape[0]]
+                matched_block_anchor0 = [zoomed_matched_center[0] - matched_block_overlap, matched_am.shape[0]]
+                
+            for j in range(2):
 
-            for block_anchor1 in self._block_anchors:
+                template_block_overlap = int(self._block_overlap * template_am.shape[1])
+                matched_block_overlap = int(self._block_overlap * matched_am.shape[1])
+                if j == 0:
+                    template_block_anchor1 = [0, template_center[1] + template_block_overlap]
+                    matched_block_anchor1 = [0, zoomed_matched_center[1] + matched_block_overlap]
+                else:
+                    template_block_anchor1 = [template_center[1] - template_block_overlap, template_am.shape[1]]
+                    matched_block_anchor1 = [zoomed_matched_center[1] - matched_block_overlap, matched_am.shape[1]]
 
-                sub_anchor1 = (block_anchor1 * template_am.shape[1]).astype(int)
+                for k in range(2):
 
-                for block_anchor2 in self._block_anchors:
-
-                    sub_anchor2 = (block_anchor2 * template_am.shape[2]).astype(int)
+                    template_block_overlap = int(self._block_overlap * template_am.shape[2])
+                    matched_block_overlap = int(self._block_overlap * matched_am.shape[2])
+                    if k == 0:
+                        template_block_anchor2 = [0, template_center[2] + template_block_overlap]
+                        matched_block_anchor2 = [0, zoomed_matched_center[2] + matched_block_overlap]
+                    else:
+                        template_block_anchor2 = [template_center[2] - template_block_overlap, template_am.shape[2]]
+                        matched_block_anchor2 = [zoomed_matched_center[2] - matched_block_overlap, matched_am.shape[2]]
 
                     sub_template_data = template_data[
-                                            sub_anchor0[0]:sub_anchor0[1],
-                                            sub_anchor1[0]:sub_anchor1[1],
-                                            sub_anchor2[0]:sub_anchor2[1]]
+                                            template_block_anchor0[0]:template_block_anchor0[1],
+                                            template_block_anchor1[0]:template_block_anchor1[1],
+                                            template_block_anchor2[0]:template_block_anchor2[1]]
                     sub_template_am = template_am[
-                                            sub_anchor0[0]:sub_anchor0[1],
-                                            sub_anchor1[0]:sub_anchor1[1],
-                                            sub_anchor2[0]:sub_anchor2[1]]
-                    sub_matched_data = zoomed_matched_data_inter[
-                                            sub_anchor0[0]:sub_anchor0[1],
-                                            sub_anchor1[0]:sub_anchor1[1],
-                                            sub_anchor2[0]:sub_anchor2[1]]
-                    sub_matched_am = zoomed_matched_am_inter[
-                                            sub_anchor0[0]:sub_anchor0[1],
-                                            sub_anchor1[0]:sub_anchor1[1],
-                                            sub_anchor2[0]:sub_anchor2[1]]
+                                          template_block_anchor0[0]:template_block_anchor0[1],
+                                          template_block_anchor1[0]:template_block_anchor1[1],
+                                          template_block_anchor2[0]:template_block_anchor2[1]]
+                    sub_matched_data = zoomed_matched_data[
+                                           matched_block_anchor0[0]:matched_block_anchor0[1],
+                                           matched_block_anchor1[0]:matched_block_anchor1[1],
+                                           matched_block_anchor2[0]:matched_block_anchor2[1]]
+                    sub_matched_am = zoomed_matched_am[
+                                         matched_block_anchor0[0]:matched_block_anchor0[1],
+                                         matched_block_anchor1[0]:matched_block_anchor1[1],
+                                         matched_block_anchor2[0]:matched_block_anchor2[1]]
 
                     sub_block_id += 1
 
