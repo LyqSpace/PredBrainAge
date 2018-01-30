@@ -3,6 +3,8 @@ from matplotlib.widgets import Slider
 from scipy import ndimage
 from scipy import optimize
 from skimage import feature
+from skimage import measure
+from skimage import transform
 import numpy as np
 
 
@@ -191,7 +193,7 @@ def get_sobel_axis0(img):
                        [[-1, -2, -1],
                         [0, 0, 0],
                         [1, 2, 1]]])
-    sobel_map = ndimage.convolve(img, kernel) / 3
+    sobel_map = ndimage.convolve(img, kernel) / 32
     return sobel_map
 
 
@@ -207,7 +209,7 @@ def get_sobel_axis1(img):
                        [[-1, 0, 1],
                         [-2, 0, 2],
                         [-1, 0, 1]]])
-    sobel_map = ndimage.convolve(img, kernel) / 3
+    sobel_map = ndimage.convolve(img, kernel) / 32
     return sobel_map
 
 
@@ -223,7 +225,7 @@ def get_sobel_axis2(img):
                        [[1, 2, 1],
                         [2, 4, 2],
                         [1, 2, 1]]])
-    sobel_map = ndimage.convolve(img, kernel) / 3
+    sobel_map = ndimage.convolve(img, kernel) / 32
     return sobel_map
 
 
@@ -278,7 +280,7 @@ def get_union_data(data0, data1):
     return data0_union, data1_union
 
 
-def get_harris_map(img_data, k=0.005, sigma=1):
+def get_harris_map(img_data, k=0.05, sigma=1):
 
     sobel_map0 = get_sobel_axis0(img_data)
     sobel_map1 = get_sobel_axis1(img_data)
@@ -310,18 +312,19 @@ def get_harris_map(img_data, k=0.005, sigma=1):
             M[0,1] * (M[1,0] * M[2,2] - M[2,0] * M[1,2]) +
             M[0,2] * (M[1,0] * M[2,1] - M[2,0] * M[1,1]))
     traceM = M[0,0] + M[1,1] + M[2,2]
-    harris_map = detM - k * traceM * traceM
+    harris_map = detM / (traceM * traceM + 1e-8)
 
     return harris_map
 
 
-def get_harris_feature(img, harris_map, threshold=0.1, min_dist=3):
+def get_harris_feature(img, harris_map, top_num=50, min_dist=5):
 
-    harris_threshold = harris_map.max() * threshold
+    # harris_threshold = harris_map.mean() * threshold
+    harris_threshold = 0
     mask = 1 * (harris_map > harris_threshold)
     points = np.array(mask.nonzero()).T
     harris_value = [harris_map[p[0], p[1], p[2]] for p in points]
-    descending_list = np.argsort(harris_value)
+    descending_list = np.flip(np.argsort(harris_value), 0)
 
     allowed_map = np.zeros(harris_map.shape)
     allowed_map[min_dist:-min_dist, min_dist:-min_dist, min_dist:-min_dist] = 1
@@ -331,79 +334,107 @@ def get_harris_feature(img, harris_map, threshold=0.1, min_dist=3):
         if allowed_map[points[i,0], points[i,1], points[i,2]] == 0:
             continue
 
+        print(points[i], harris_value[i])
         harris_points.append(points[i])
         allowed_map[points[i,0]-min_dist:points[i,0]+min_dist,
                     points[i,1]-min_dist:points[i,1]+min_dist,
                     points[i,2]-min_dist:points[i,2]+min_dist] = 0
+        if len(harris_points) >= top_num:
+            break
 
     descriptors = []
     for point in harris_points:
         patch = img[point[0]-min_dist:point[0]+min_dist+1,
                     point[1]-min_dist:point[1]+min_dist+1,
                     point[2]-min_dist:point[2]+min_dist+1]
-        descriptors.append(patch.flattern())
+        descriptors.append(patch.flatten())
 
-    return descriptors
+    return np.array(harris_points), np.array(descriptors)
 
 
 def get_affine_params(template_data, matched_data):
 
-    template_data_harris = get_harris_map(template_data)
-    matched_data_harris = get_harris_map(matched_data)
+    template_harris_map = get_harris_map(template_data)
+    matched_harris_map = get_harris_map(matched_data)
 
-    template_data_descriptor = get_harris_feature(template_data, template_data_harris)
-    matched_data_descriptor = get_harris_feature(matched_data, matched_data_harris)
+    template_harris_points, template_descriptor = get_harris_feature(template_data, template_harris_map)
+    print('')
+    matched_harris_points, matched_descriptor = get_harris_feature(matched_data, matched_harris_map)
 
-    feature.match_descriptors(template_data_descriptor, matched_data_descriptor, metric='euclidean')
+    matches = feature.match_descriptors(template_descriptor, matched_descriptor, metric='euclidean')
 
-    # template_data_union = ndimage.gaussian_filter(template_data_union, 10)
-    # matched_data_union = ndimage.gaussian_filter(matched_data_union, 10)
+    A0 = np.ones(matches.shape)
+    b0 = np.ones(matches.shape[0])
+    A1 = np.ones(matches.shape)
+    b1 = np.ones(matches.shape[0])
+    A2 = np.ones(matches.shape)
+    b2 = np.ones(matches.shape[0])
+    for i in range(len(matches)):
+        A0[i, 0] = matched_harris_points[matches[i, 1], 0]
+        b0[i] = template_harris_points[matches[i, 0], 0]
+        A1[i, 0] = matched_harris_points[matches[i, 1], 1]
+        b1[i] = template_harris_points[matches[i, 0], 1]
+        A2[i, 0] = matched_harris_points[matches[i, 1], 2]
+        b2[i] = template_harris_points[matches[i, 0], 2]
 
-    # show_3Ddata_comp(template_data_union, matched_data_union)
+    result0 = optimize.lsq_linear(A0, b0)
+    result1 = optimize.lsq_linear(A1, b1)
+    result2 = optimize.lsq_linear(A2, b2)
 
-    sobel_map0 = get_sobel_axis0(template_data_union)
-    sobel_map0 = ndimage.gaussian_filter(sobel_map0, 5)
-    # show_3Ddata(sobel_map0)
+    affine_params = np.array([result0.x[0], result1.x[0], result2.x[0], result0.x[1], result1.x[1], result2.x[1]])
+    print(affine_params)
 
-    sobel_map1 = get_sobel_axis1(template_data_union)
-    sobel_map1 = ndimage.gaussian_filter(sobel_map1, 5)
+    # src = []
+    # dst = []
+    # for pair in matches:
+    #     src.append(matched_harris_points[pair[1]])
+    #     dst.append(template_harris_points[pair[0]])
+    # src = np.array(src)
+    # dst = np.array(dst)
+    #
+    # affine_robust, inliners = measure.ransac((src, dst), transform.AffineTransform, min_samples=4, residual_threshold=2)
+    #
+    # print(affine_robust)
 
-    sobel_map2 = get_sobel_axis2(template_data_union)
-    sobel_map2 = ndimage.gaussian_filter(sobel_map2, 5)
+    return affine_params
 
-    sobel_map0_axis = np.zeros(template_data_union.shape)
-    for i in range(template_data_union.shape[0]):
-        sobel_map0_axis[i,:,:] = i * np.ones((template_data_union.shape[1], template_data_union.shape[2]))
-    sobel_map0_axis = sobel_map0 * sobel_map0_axis
 
-    sobel_map1_axis = np.zeros(template_data_union.shape)
-    for i in range(template_data_union.shape[1]):
-        sobel_map1_axis[:,i,:] = i * np.ones((template_data_union.shape[0], template_data_union.shape[2]))
-    sobel_map1_axis = sobel_map1 * sobel_map1_axis
+def get_zoom_parameter(template_data, matched_data, axis):
 
-    sobel_map2_axis = np.zeros(template_data_union.shape)
-    for i in range(template_data_union.shape[2]):
-        sobel_map2_axis[:,:,i] = i * np.ones((template_data_union.shape[0], template_data_union.shape[1]))
-    sobel_map2_axis = sobel_map2 * sobel_map2_axis
+    template_1D_len = template_data.shape[axis]
+    matched_1D_len = matched_data.shape[axis]
 
-    pixel_num = template_data_union.shape[0] * template_data_union.shape[1] * template_data_union.shape[2]
-    b = matched_data_union - template_data_union + sobel_map0_axis + sobel_map1_axis + sobel_map2_axis
-    b = b.reshape(pixel_num)
+    template_1D = np.zeros(template_1D_len)
+    matched_1D = np.zeros(matched_1D_len)
 
-    A = np.c_[
-            sobel_map0_axis.reshape(pixel_num), sobel_map1_axis.reshape(pixel_num), sobel_map2_axis.reshape(pixel_num),
-            sobel_map0.reshape(pixel_num), sobel_map1.reshape(pixel_num), sobel_map2.reshape(pixel_num)]
+    if axis == 0:
+        for i in range(template_1D_len):
+            template_1D[i] = template_data[i,:,:].mean()
+        for i in range(matched_1D_len):
+            matched_1D[i] = matched_data[i,:,:].mean()
 
-    offset_bound = 0.3 * min(template_data_union.shape[0], template_data_union.shape[1], template_data_union.shape[2])
+    if axis == 1:
+        for i in range(template_1D_len):
+            template_1D[i] = template_data[:,i,:].mean()
+        for i in range(matched_1D_len):
+            matched_1D[i] = matched_data[:,i,:].mean()
 
-    bounds = np.array([[0.6, 0.6, 0.6, -offset_bound, -offset_bound, -offset_bound],
-                       [1.4, 1.4, 1.4, offset_bound, offset_bound, offset_bound]])
-    affine_params = optimize.lsq_linear(A, b, bounds=bounds)
+    if axis == 2:
+        for i in range(template_1D_len):
+            template_1D[i] = template_data[:,:,i].mean()
+        for i in range(matched_1D_len):
+            matched_1D[i] = matched_data[:,:,i].mean()
 
-    # affine_params_mat = np.linalg.inv(A.T.dot(A)).dot(A.T).dot(b)
-    # print(affine_params.x, affine_params_mat)
+    template_1D_center = ndimage.measurements.center_of_mass(template_1D)
+    matched_1D_center = ndimage.measurements.center_of_mass(matched_1D)
 
-    return affine_params.x
+    template_1D_left = template_1D[:template_1D_center]
+    template_1D_right = template_1D[template_1D_center:]
+
+    matched_1D_left = matched_1D[:matched_1D_center]
+    matched_1D_right = matched_1D[matched_1D_center:]
+
+    pass
 
 
 def get_div(template_am, matched_am):

@@ -2,7 +2,7 @@ import os
 from optparse import OptionParser
 
 from src.Logger import Logger
-from src.IL.InductiveLearning import InductiveLearning
+from src.DL.DivideLearning import DivideLearning
 
 
 def get_user_params():
@@ -66,13 +66,13 @@ def main(st_group, resample, divide, induce):
     data_path = 'data/'
     dataset_name = 'IXI-T1'
 
-    inductive_model = InductiveLearning()
+    divide_model = DivideLearning()
 
     if divide:
-        inductive_model.train(data_path, dataset_name, st_group=st_group, resample=resample)
+        divide_model.train(data_path, dataset_name, st_group=st_group, resample=resample)
 
     if induce:
-        inductive_model.induce(data_path, dataset_name)
+        divide_model.induce(data_path, dataset_name)
 
 
 if __name__ == '__main__':

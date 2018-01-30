@@ -1,6 +1,7 @@
 import subprocess
 import os
 import nilearn.image as ni_img
+from nilearn.datasets import load_mni152_template
 import nibabel.affines as ni_affine
 import re
 import numpy as np
@@ -30,6 +31,8 @@ def resize_data(st_id = 0, file_name=None):
     data_name_list = os.listdir('../data/IXI-T1-raw-niigz')
     count = 0
 
+    template = load_mni152_template()
+
     for name in data_name_list:
 
         count += 1
@@ -46,8 +49,10 @@ def resize_data(st_id = 0, file_name=None):
         img_id = int(re_result[0])
         img = ni_img.load_img('../data/IXI-T1-raw-niigz/' + name)
 
-        img_affine = ni_img.resample_img(img, target_affine=np.eye(3) * 4)
-        print(img_affine.get_fdata().shape)
+        # img_affine = ni_img.resample_img(img, target_affine=np.eye(3) * 4)
+        img_affine = ni_img.resample_to_img(img, template)
+
+        print(' ', img_affine.get_fdata().shape)
 
         # img_data = img_affine.get_data()
         #
@@ -60,7 +65,9 @@ def resize_data(st_id = 0, file_name=None):
         #
         # continue
 
-        np.save('../data/IXI-T1-small-npy/' + str(img_id), img_affine.get_fdata())
+        # utils.show_3Ddata(img_affine.get_fdata())
+
+        np.save('../data/IXI-T1-raw-npy/' + str(img_id), img_affine.get_fdata())
 
 
 def get_training_name_list():
@@ -125,7 +132,7 @@ def delete_data(data_id):
 
 
 def normalize_npy(file_name=None):
-    path = '../data/IXI-T1-small-npy/'
+    path = '../data/IXI-T1-raw-npy/'
     data_name_list = os.listdir(path)
     count = 0
     for name in data_name_list:
@@ -161,7 +168,7 @@ if __name__ == '__main__':
     # delete_data(533)
     # normalize_npy()
 
-    # resize_data(file_name='IXI533-Guys-1066-T1.nii.gz')
-    # normalize_npy(file_name='533.npy')
+    resize_data()
+    normalize_npy()
     # rename()
     pass

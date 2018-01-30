@@ -2,17 +2,17 @@ from scipy import ndimage
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.IL.Database import Database
+from src.DL.Database import Database
 import src.utils as utils
 
 
-class InductiveLearning:
+class DivideLearning:
 
     def __init__(self):
         self._database = Database()
 
         self._divisor = 2
-        self._divide_level_limit = 4
+        self._divide_level_limit = 5
         self._block_anchors = np.array([[0, 0.6], [0.4, 1]])
         self._child_num = self._divisor ** 3
         self._block_num = 0
@@ -76,10 +76,15 @@ class InductiveLearning:
         if divide_level == self._divide_level_limit:
             return
 
-        affine_params = utils.get_affine_params(template_am, matched_am)
+        zoom = np.zeros(3)
+        offset = np.zeros(3)
+        for i in range(3):
+            zoom[i], offset[i] = utils.get_zoom_parameter(template_am, matched_am, i)
 
         zoom_rate = affine_params[0:3]
         offset = affine_params[3:6].astype(int)
+
+        utils.show_3Ddata_comp(template_am, matched_am, 'Comp')
 
         zoomed_matched_am = ndimage.zoom(matched_am, zoom_rate)
         zoomed_matched_data = ndimage.zoom(matched_data, zoom_rate)
@@ -95,13 +100,13 @@ class InductiveLearning:
 
         self._block_attr[block_id] = np.r_[affine_params, intensity_mean, am_div, flag]
 
-        # print(block_id, self._block_attr[block_id], template_am.shape, zoomed_matched_am_inter.shape)
+        print(block_id, self._block_attr[block_id], template_am.shape, zoomed_matched_am_inter.shape)
 
         # if block_id > 74:
 
             # utils.show_3Ddata(template_am, 'Template')
             # utils.show_3Ddata(zoomed_matched_am, 'Zoomed Matched')
-            # utils.show_3Ddata_comp(template_am, zoomed_matched_am_inter, 'Comp')
+        utils.show_3Ddata_comp(template_data, zoomed_matched_data_inter, 'Comp')
             # pass
 
         if divide_level == self._divide_level_limit - 1:
