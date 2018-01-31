@@ -6,6 +6,7 @@ import nibabel.affines as ni_affine
 import re
 import numpy as np
 import src.utils as utils
+from scipy import ndimage
 
 
 def get_unused_list():
@@ -143,7 +144,12 @@ def normalize_npy(file_name=None):
             continue
 
         data = np.load(path + name)
-        new_data = (data - data.mean()) / data.std()
+
+        resized_data = ndimage.zoom(data, (0.5, 0.5, 0.5))
+
+        # new_data = (data - data.mean()) / data.std()
+        new_data = (resized_data - resized_data.mean()) / resized_data.std()
+
         np.save('../data/IXI-T1/' + name, new_data)
 
         # slice_0 = data[50, :, :]
@@ -168,7 +174,7 @@ if __name__ == '__main__':
     # delete_data(533)
     # normalize_npy()
 
-    resize_data()
+    # resize_data()
     normalize_npy()
     # rename()
     pass

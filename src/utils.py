@@ -405,43 +405,37 @@ def get_zoom_parameter(template_data, matched_data, axis):
     template_1D_len = template_data.shape[axis]
     matched_1D_len = matched_data.shape[axis]
 
-    template_1D = np.zeros(template_1D_len)
-    matched_1D = np.zeros(matched_1D_len)
-
     if axis == 0:
-        for i in range(template_1D_len):
-            template_1D[i] = template_data[i,:,:].mean()
-        for i in range(matched_1D_len):
-            matched_1D[i] = matched_data[i,:,:].mean()
+        template_1D = [template_data[i,:,:].mean() for i in range(template_1D_len)]
+        matched_1D = [matched_data[i,:,:].mean() for i in range(matched_1D_len)]
 
     if axis == 1:
-        for i in range(template_1D_len):
-            template_1D[i] = template_data[:,i,:].mean()
-        for i in range(matched_1D_len):
-            matched_1D[i] = matched_data[:,i,:].mean()
+        template_1D = [template_data[:, i, :].mean() for i in range(template_1D_len)]
+        matched_1D = [matched_data[:, i, :].mean() for i in range(matched_1D_len)]
 
     if axis == 2:
-        for i in range(template_1D_len):
-            template_1D[i] = template_data[:,:,i].mean()
-        for i in range(matched_1D_len):
-            matched_1D[i] = matched_data[:,:,i].mean()
+        template_1D = [template_data[:, :, i].mean() for i in range(template_1D_len)]
+        matched_1D = [matched_data[:, :, i].mean() for i in range(matched_1D_len)]
+
+    template_1D = np.array(template_1D)
+    matched_1D = np.array(matched_1D)
 
     template_1D_center = int((ndimage.measurements.center_of_mass(template_1D))[0])
     matched_1D_center = int((ndimage.measurements.center_of_mass(matched_1D))[0])
-    
+
     if (template_1D_center == 0 or template_1D_center == template_1D_len - 1 or
         matched_1D_center == 0 or matched_1D_center == matched_1D_len - 1):
         return 1, template_1D_center, matched_1D_center
 
     template_1D_left = template_1D[:template_1D_center]
     matched_1D_left = matched_1D[:matched_1D_center]
-    template_1D_left_center = int((ndimage.measurements.center_of_mass(template_1D_left))[0])
-    matched_1D_left_center = int((ndimage.measurements.center_of_mass(matched_1D_left))[0])
+    template_1D_left_center = (ndimage.measurements.center_of_mass(template_1D_left))[0]
+    matched_1D_left_center = (ndimage.measurements.center_of_mass(matched_1D_left))[0]
 
     template_1D_right = template_1D[template_1D_center:]
     matched_1D_right = matched_1D[matched_1D_center:]
-    template_1D_right_center = int((ndimage.measurements.center_of_mass(template_1D_right))[0])
-    matched_1D_right_center = int((ndimage.measurements.center_of_mass(matched_1D_right))[0])
+    template_1D_right_center = (ndimage.measurements.center_of_mass(template_1D_right))[0]
+    matched_1D_right_center = (ndimage.measurements.center_of_mass(matched_1D_right))[0]
     
     # print('all  ', template_1D_center, matched_1D_center)
     # print('left ', template_1D_left_center, matched_1D_left_center)

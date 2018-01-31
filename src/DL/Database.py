@@ -21,6 +21,7 @@ class Database:
         self._cur_group = None
         self._cur_group_loaded = False
         self._group_index = 0
+        self._group_st = 0
         self._group_end = 0
 
         self._data_index = 0
@@ -75,8 +76,9 @@ class Database:
                 self._create_groups()
 
             self._groups_df = pd.read_csv(data_path + 'groups.csv')
-            self._group_index = self._groups_df['GROUP_AGE'].min()
+            self._group_st = self._groups_df['GROUP_AGE'].min()
             self._group_end = self._groups_df['GROUP_AGE'].max() + 1
+            self._group_index = self._group_st
             self._cur_group_loaded = False
 
             print('Done.')
@@ -118,10 +120,20 @@ class Database:
         else:
             raise Exception(self._dataset_name + ' dataset is not found.')
 
+    def get_group_st(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        return self._group_st
+
     def get_group_end(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        return self._groups_df['GROUP_AGE'].max() + 1
+        return self._group_end
+
+    def get_group_size(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        return self._group_end - self._group_st
 
     def get_data_from_group_size(self):
         if self._dataset_loaded is False:
@@ -129,6 +141,11 @@ class Database:
         if self._cur_group_loaded is False:
             raise Exception('Current group must be loaded first.')
         return self._cur_group.shape[0]
+
+    def get_data_from_dataset_size(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        return self._dataset_df.shape[0]
 
     def get_data_index(self):
         if self._dataset_loaded is False:
@@ -145,10 +162,13 @@ class Database:
             raise Exception('Dataset must be loaded first.')
         return self._group_index
 
-    def set_group_index(self, id):
+    def set_group_index(self, id=None):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        self._group_index = id
+        if id is None:
+            self._group_index = self._group_st
+        else:
+            self._group_index = id
 
     def get_next_group(self):
         if self._dataset_loaded is False:
@@ -177,9 +197,6 @@ class Database:
         if self._cur_group is None:
             raise Exception('Call get_next_group() first.')
 
-        if self._mode != 'training':
-            raise Exception('get_next_data_from_group must be called in training mode.')
-
         if self.has_next_data_from_group() is False:
             return None
 
@@ -204,15 +221,16 @@ class Database:
         if self.has_next_data_from_dataset() is False:
             return None
 
-        if self._mode != 'validation' or self._mode != 'test':
+        if self._mode != 'validation' and self._mode != 'test':
             raise Exception('get_next_data must be called in validation or test mode.')
 
-        data_name, age = self._dataset_df.iloc[self._data_index, ['IXI-T1', 'AGE']]
+        row_series = self._dataset_df.iloc[self._data_index]
+        data_id = str(int(row_series['IXI_ID']))
+        data = np.load(self._data_path + self._dataset_name + '/' + data_id + '.npy')
+
         self._data_index += 1
 
-        data = np.load(self._data_path + self._dataset_name + '/' + data_name + '.npy')
-
-        return data_name, data, age
+        return data_id, data, row_series['AGE']
 
 if __name__ == '__main__':
 
