@@ -41,7 +41,7 @@ class DivideLearning:
                 print('Pass.')
                 continue
 
-            _, template_data, _ = self._database.get_next_data_from_group()
+            template_id, template_data, template_age = self._database.get_next_data_from_group()
             template_am = utils.get_attention_map(template_data)
 
             data_from_group_num = self._database.get_data_from_group_size() - 1
@@ -49,13 +49,13 @@ class DivideLearning:
 
             while self._database.has_next_data_from_group():
 
-                print(' ', str(self._database.get_data_index()))
+                print(' ', str(self._database.get_data_from_group_index()))
 
                 data_name, matched_data, age = self._database.get_next_data_from_group()
                 matched_am = utils.get_attention_map(matched_data)
                 self._divide(0, template_data, template_am, matched_data, matched_am)
 
-                group_block_attr[self._database.get_data_index() - 2] = self._block_attr
+                group_block_attr[self._database.get_data_from_group_index() - 2] = self._block_attr
 
             print(' ')
             np.save('experiments/group_block_attr/' + str(group_age) + '.npy', group_block_attr)
@@ -174,7 +174,7 @@ class DivideLearning:
         print('Inductive Learning. Dataset {0}.'.format(dataset_name))
 
         self._database.load_database(data_path, dataset_name, mode='training')
-        group_block_attr_path = 'experiments/group_block_attr/'
+        group_block_path = 'experiments/group_block_attr/'
 
         group_significant_blocks = np.zeros((self._database.get_group_size(), self._block_num))
 
@@ -184,7 +184,7 @@ class DivideLearning:
 
             print('group age ', group_age)
 
-            group_block_attr = np.load(group_block_attr_path + str(group_age) + '.npy')
+            group_block_attr = np.load(group_block_path + str(group_age) + '.npy')
 
             significant_block = [(group_block_attr[:,block_id,9] * group_block_attr[:,block_id,10]).min()
                                  for block_id in range(self._block_num)]
@@ -211,7 +211,7 @@ class DivideLearning:
             weight_sum = group_block_weights[group_id,:].sum()
             group_block_weights[group_id,:] /= weight_sum
 
-        np.save(group_block_attr_path + 'group_block_weights.npy', group_block_weights)
+        np.save(group_block_path + 'group_block_weights.npy', group_block_weights)
 
     def test(self, data_path, dataset_name, mode):
 
@@ -229,10 +229,10 @@ class DivideLearning:
             data_name, test_data, test_age = self._database.get_next_data_from_dataset()
             test_am = utils.get_attention_map(test_data)
 
-            print(self._database.get_data_index(), ' Age ', test_age)
+            print(self._database.get_data_from_dataset_index(), ' Age ', test_age)
 
-            group_block_attr = np.zeros((self._database.get_group_size(), self._block_num, self._attr_num))
-            self._database.set_group_index()
+            self._database.set_group_index(int(test_age)+20)
+            # self._database.set_group_index()
 
             group_confidence = np.zeros(self._database.get_group_size())
 
@@ -243,7 +243,7 @@ class DivideLearning:
 
                 print('\tGroup Age: {0}. '.format(group_age), end='')
 
-                _, template_data, template_age = self._database.get_next_data_from_group()
+                template_id, template_data, template_age = self._database.get_next_data_from_group()
                 template_am = utils.get_attention_map(template_data)
 
                 self._divide(0, template_data, template_am, test_data, test_am)
@@ -255,10 +255,20 @@ class DivideLearning:
                 confidence = 0
                 for block_id in top_significant:
                     confidence += group_block_weights[group_id, block_id]
+                    print(block_id, group_block_weights[group_id, block_id])
 
                 group_confidence[group_id] = confidence
 
                 print('CF: ', confidence)
+
+                group_block_attr = np.load(group_block_path + str(group_age) + '.npy')
+                group_block_attr = group_block_attr[:, :, 9] * group_block_attr[:, :, 10]
+
+                min_np = [group_block_attr[:,i].min() for i in range(group_block_attr.shape[1])]
+                avg_np = [group_block_attr[:,i].mean() for i in range(group_block_attr.shape[1])]
+
+                comp_np = np.vstack((group_block_attr, min_np, avg_np, significant_block))
+                print(comp_np)
 
             top_confidence = np.flip(np.argsort(group_confidence), 0)
 

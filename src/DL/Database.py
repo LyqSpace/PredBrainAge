@@ -24,7 +24,8 @@ class Database:
         self._group_st = 0
         self._group_end = 0
 
-        self._data_index = 0
+        self._data_from_group_index = 0
+        self._data_from_dataset_index = 0
 
     def load_database(self, data_path, dataset_name, mode='training', resample=False):
 
@@ -69,7 +70,7 @@ class Database:
             if mode == 'test':
                 self._dataset_df = pd.read_csv(data_path + 'test_df.csv')
 
-            self._data_index = 0
+            self._data_from_dataset_index = 0
             self._dataset_loaded = True
 
             if mode == 'training' and resample:
@@ -147,15 +148,25 @@ class Database:
             raise Exception('Dataset must be loaded first.')
         return self._dataset_df.shape[0]
 
-    def get_data_index(self):
+    def get_data_from_group_index(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        return self._data_index
+        return self._data_from_group_index
 
-    def set_data_index(self, id):
+    def get_data_from_dataset_index(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        self._data_index = id
+        return self._data_from_dataset_index
+
+    def set_data_from_group_index(self, id):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        self._data_from_group_index = id
+
+    def set_data_from_dataset_index(self, id):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        self._data_from_dataset_index = id
 
     def get_group_index(self):
         if self._dataset_loaded is False:
@@ -179,13 +190,13 @@ class Database:
         query_str = 'GROUP_AGE == {0}'.format(self._group_index)
         self._cur_group = self._groups_df.query(query_str)
         self._group_index += 1
-        self._data_index = 0
+        self._data_from_group_index = 0
         self._cur_group_loaded = True
 
         return self._cur_group
 
     def has_next_data_from_group(self):
-        if self._data_index < self._cur_group.shape[0]:
+        if self._data_from_group_index < self._cur_group.shape[0]:
             return True
         else:
             return False
@@ -200,16 +211,16 @@ class Database:
         if self.has_next_data_from_group() is False:
             return None
 
-        row_series = self._cur_group.iloc[self._data_index]
+        row_series = self._cur_group.iloc[self._data_from_group_index]
         data_id = str(int(row_series['IXI_ID']))
         data = np.load(self._data_path + self._dataset_name + '/' + data_id + '.npy')
 
-        self._data_index += 1
+        self._data_from_group_index += 1
 
         return data_id, data, row_series['AGE']
 
     def has_next_data_from_dataset(self):
-        if self._data_index < self._dataset_df.shape[0]:
+        if self._data_from_dataset_index < self._dataset_df.shape[0]:
             return True
         else:
             return False
@@ -224,11 +235,11 @@ class Database:
         if self._mode != 'validation' and self._mode != 'test':
             raise Exception('get_next_data must be called in validation or test mode.')
 
-        row_series = self._dataset_df.iloc[self._data_index]
+        row_series = self._dataset_df.iloc[self._data_from_dataset_index]
         data_id = str(int(row_series['IXI_ID']))
         data = np.load(self._data_path + self._dataset_name + '/' + data_id + '.npy')
 
-        self._data_index += 1
+        self._data_from_dataset_index += 1
 
         return data_id, data, row_series['AGE']
 
@@ -238,4 +249,4 @@ if __name__ == '__main__':
     database.load_database('../../data/', 'IXI-T1', mode='training', resample=False)
     database.get_next_group()
     database.get_next_data_from_group()
-    database.get_data_index()
+    database.get_data_from_group_size()
