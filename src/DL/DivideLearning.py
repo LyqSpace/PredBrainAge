@@ -1,4 +1,4 @@
-from scipy import ndimage
+from scipy import ndimage, stats
 import numpy as np
 
 from src.DL.Database import Database
@@ -176,7 +176,7 @@ class DivideLearning:
         self._database.load_database(data_path, dataset_name, mode='training')
         group_block_path = 'experiments/group_block_attr/'
 
-        group_significant_blocks = np.zeros((self._database.get_group_size(), self._block_num))
+        group_block_params = np.zeros((self._database.get_group_size(), self._block_num))
 
         for group_id in range(self._database.get_group_size()):
 
@@ -185,33 +185,13 @@ class DivideLearning:
             print('group age ', group_age)
 
             group_block_attr = np.load(group_block_path + str(group_age) + '.npy')
+            group_block_attr = group_block_attr[:,:,8] * (1/group_block_attr[:,:,10])
 
-            significant_block = [(group_block_attr[:,block_id,9] * group_block_attr[:,block_id,10]).min()
-                                 for block_id in range(self._block_num)]
-            top_significant = np.flip(np.argsort(significant_block), 0)
-            top_significant = np.sort(top_significant[:self._significant_block_num])
+            group_block_pct = [np.percentile(group_block_attr[:, block_id], 80) for block_id in range(self._block_num)]
 
-            for i in range(self._significant_block_num):
-                group_significant_blocks[group_id,top_significant[i]] = 1
+            group_block_params[group_id] = np.array(group_block_pct)
 
-        block_weights = np.zeros(self._block_num)
-        for block_id in range(self._block_num):
-            significant_sum = group_significant_blocks[:,block_id].sum()
-            if significant_sum > 0:
-                block_weights[block_id] = 1.0 / significant_sum
-
-        group_block_weights = np.zeros((self._database.get_group_size(), self._block_num))
-        for group_id in range(self._database.get_group_size()):
-
-            for block_id in range(self._block_num):
-                if group_significant_blocks[group_id, block_id] == 0:
-                    continue
-                group_block_weights[group_id,block_id] = block_weights[block_id]
-
-            weight_sum = group_block_weights[group_id,:].sum()
-            group_block_weights[group_id,:] /= weight_sum
-
-        np.save(group_block_path + 'group_block_weights.npy', group_block_weights)
+        np.save(group_block_path + 'group_block_params.npy', group_block_params)
 
     def test(self, data_path, dataset_name, mode):
 
@@ -220,7 +200,7 @@ class DivideLearning:
         self._database.load_database(data_path, dataset_name, mode=mode)
         group_block_path = 'experiments/group_block_attr/'
 
-        group_block_weights = np.load(group_block_path + 'group_block_weights.npy')
+        group_block_params = np.load(group_block_path + 'group_block_params.npy')
 
         MAE = 0
 
@@ -231,10 +211,12 @@ class DivideLearning:
 
             print(self._database.get_data_from_dataset_index(), ' Age ', test_age)
 
-            self._database.set_group_index(int(test_age)+20)
-            # self._database.set_group_index()
+            # self._database.set_group_index(int(test_age))
+            # self._database.set_group_index(33)
+            self._database.set_group_index()
 
-            group_confidence = np.zeros(self._database.get_group_size())
+            best_group_age = 0
+            best_significant = np.inf
 
             while self._database.get_next_group() is not None:
 
@@ -248,39 +230,30 @@ class DivideLearning:
 
                 self._divide(0, template_data, template_am, test_data, test_am)
 
-                significant_block = self._block_attr[:,9] * self._block_attr[:,10]
-                top_significant = np.flip(np.argsort(significant_block), 0)
-                top_significant = np.sort(top_significant[:self._significant_block_num])
+                block_attr = self._block_attr[:, 8] * ( 1/self._block_attr[:, 10] )
+                block_sum = 0
+                # matched_block_sum = 0
+                significant_sum = 0
+                for block_id in range(self._block_num):
+                    if group_block_params[group_id, block_id] > 0.2:
+                        continue
+                    # if group_age == 39:
+                    # print(block_id, block_attr[block_id], group_block_params[group_id, block_id])
+                    block_sum += 1
+                    significant_sum += block_attr[block_id]
+                    # if block_attr[block_id] > group_block_params[group_id, block_id]:
+                    #     matched_block_sum += 1
 
-                confidence = 0
-                for block_id in top_significant:
-                    confidence += group_block_weights[group_id, block_id]
-                    print(block_id, group_block_weights[group_id, block_id])
+                significant_avg = significant_sum / block_sum
 
-                group_confidence[group_id] = confidence
+                if best_significant > significant_avg:
+                    best_significant = significant_avg
+                    best_group_age = group_age
 
-                print('CF: ', confidence)
+                print('#blocks:', block_sum, 's:', significant_avg, 'best_age:', best_group_age)
 
-                group_block_attr = np.load(group_block_path + str(group_age) + '.npy')
-                group_block_attr = group_block_attr[:, :, 9] * group_block_attr[:, :, 10]
-
-                min_np = [group_block_attr[:,i].min() for i in range(group_block_attr.shape[1])]
-                avg_np = [group_block_attr[:,i].mean() for i in range(group_block_attr.shape[1])]
-
-                comp_np = np.vstack((group_block_attr, min_np, avg_np, significant_block))
-                print(comp_np)
-
-            top_confidence = np.flip(np.argsort(group_confidence), 0)
-
-            top5_match = 'N'
-            for i in range(5):
-                group_age = top_confidence[i] + self._database.get_group_st()
-                print('Age: ', group_age, ' CF: ', group_confidence[top_confidence[i]], end='')
-                if group_age == test_age:
-                    top5_match = 'Y'
-
-            error = abs(top_confidence[0] + self._database.get_group_st() - test_age)
-            print(' ', top5_match, ' Err: ', error)
+            error = abs(best_group_age - test_age)
+            print(' Err: ', error)
 
             MAE += error
 

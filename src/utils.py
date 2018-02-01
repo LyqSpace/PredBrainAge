@@ -1,11 +1,18 @@
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-from scipy import ndimage
-from scipy import optimize
+from scipy import ndimage, optimize
 from skimage import feature
 from skimage import measure
 from skimage import transform
 import numpy as np
+
+
+def show_scatter(x, y, title=None):
+
+    fig,axes = plt.subplots(1, 1)
+    axes.scatter(x, y)
+    axes.set_title(title)
+    plt.show()
 
 
 def show_3Ddata(data, title=None):
