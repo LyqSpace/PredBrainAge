@@ -23,6 +23,7 @@ class Database:
         self._group_index = 0
         self._group_st = 0
         self._group_end = 0
+        self._group_step = 3
 
         self._data_from_group_index = 0
         self._data_from_dataset_index = 0
@@ -78,7 +79,7 @@ class Database:
 
             self._groups_df = pd.read_csv(data_path + 'groups.csv')
             self._group_st = self._groups_df['GROUP_AGE'].min()
-            self._group_end = self._groups_df['GROUP_AGE'].max() + 1
+            self._group_end = self._groups_df['GROUP_AGE'].max() + self._group_step
             self._group_index = self._group_st
             self._cur_group_loaded = False
 
@@ -97,19 +98,14 @@ class Database:
 
             groups = pd.DataFrame(columns=['IXI_ID', 'AGE', 'GROUP_AGE'])
 
-            min_age = int(self._dataset_df.loc[:, 'AGE'].min())
-            max_age = int(self._dataset_df.loc[:, 'AGE'].max())
+            min_age = int(self._dataset_df.loc[:, 'AGE'].min()) + 1
+            max_age = int(self._dataset_df.loc[:, 'AGE'].max()) - 1
+            age_span = (self._group_step - 1) / 2
 
-            for age in range(min_age, max_age):
-                age_span = 0
-                sample_size = 0
-                sample_result = None
+            for age in range(min_age, max_age, self._group_step):
 
-                while sample_size < 5:
-                    age_span += 1
-                    query_str = 'AGE > {0} and AGE < {1}'.format(age - age_span, age + age_span)
-                    sample_result = self._dataset_df.query(query_str)
-                    sample_size = sample_result.shape[0]
+                query_str = 'AGE > {0} and AGE < {1}'.format(age - age_span, age + age_span)
+                sample_result = self._dataset_df.query(query_str)
 
                 sample_result['GROUP_AGE'] = age
                 groups = groups.append(sample_result)
@@ -120,6 +116,11 @@ class Database:
 
         else:
             raise Exception(self._dataset_name + ' dataset is not found.')
+
+    def calc_group_age(self, group_id):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        return self._group_st + group_id * self._group_step
 
     def get_group_st(self):
         if self._dataset_loaded is False:
@@ -134,7 +135,7 @@ class Database:
     def get_group_size(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        return self._group_end - self._group_st
+        return int((self._group_end - self._group_st) / self._group_step)
 
     def get_data_from_group_size(self):
         if self._dataset_loaded is False:
@@ -168,10 +169,17 @@ class Database:
             raise Exception('Dataset must be loaded first.')
         self._data_from_dataset_index = id
 
+    def get_cur_group_age(self):
+        if self._dataset_loaded is False:
+            raise Exception('Dataset must be loaded first.')
+        if self._cur_group is None:
+            raise Exception('Call get_next_group() first.')
+        return self._group_index - self._group_step
+
     def get_group_index(self):
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
-        return self._group_index
+        return int((self._group_index - self._group_st) / self._group_step)
 
     def set_group_index(self, id=None):
         if self._dataset_loaded is False:
@@ -189,7 +197,7 @@ class Database:
 
         query_str = 'GROUP_AGE == {0}'.format(self._group_index)
         self._cur_group = self._groups_df.query(query_str)
-        self._group_index += 1
+        self._group_index += self._group_step
         self._data_from_group_index = 0
         self._cur_group_loaded = True
 

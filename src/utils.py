@@ -247,30 +247,31 @@ def get_attention_map(img):
     return attention_map
 
 
-def get_template_proj(template_data, matched_data, offset=np.zeros(3,dtype=int)):
+def get_template_proj(template_shape, data, offset=np.zeros(3,dtype=int)):
 
-    template_data_anchor_st = np.array([0, 0, 0], dtype=int)
-    template_data_anchor_ed = np.array(template_data.shape, dtype=int)
-    matched_data_anchor_st = np.array([0, 0, 0], dtype=int) + offset
-    matched_data_anchor_ed = np.array(matched_data.shape, dtype=int) + offset
+    template_anchor_st = np.array([0, 0, 0], dtype=int)
+    template_anchor_ed = np.array(template_shape, dtype=int)
+    data_anchor_st = np.array([0, 0, 0], dtype=int) + offset
+    data_anchor_ed = np.array(data.shape, dtype=int) + offset
 
-    inter_anchor_st = np.maximum(template_data_anchor_st, matched_data_anchor_st)
-    inter_anchor_ed = np.minimum(template_data_anchor_ed, matched_data_anchor_ed)
+    inter_anchor_st = np.maximum(template_anchor_st, data_anchor_st).astype(int)
+    inter_anchor_ed = np.minimum(template_anchor_ed, data_anchor_ed).astype(int)
 
+    offset = offset.astype(int)
     ROI_anchor_st = inter_anchor_st - offset
     ROI_anchor_ed = inter_anchor_ed - offset
 
-    empty_value = matched_data.min()
-    matched_data_proj = np.ones(template_data.shape) * empty_value
-    matched_data_proj[
+    empty_value = data.min()
+    proj_data = np.ones(template_shape) * empty_value
+    proj_data[
         inter_anchor_st[0]:inter_anchor_ed[0],
         inter_anchor_st[1]:inter_anchor_ed[1],
-        inter_anchor_st[2]:inter_anchor_ed[2]] = matched_data[
+        inter_anchor_st[2]:inter_anchor_ed[2]] = data[
                                                      ROI_anchor_st[0]:ROI_anchor_ed[0],
                                                      ROI_anchor_st[1]:ROI_anchor_ed[1],
                                                      ROI_anchor_st[2]:ROI_anchor_ed[2]]
 
-    return matched_data_proj
+    return proj_data
 
 
 def get_union_data(data0, data1):
@@ -407,52 +408,41 @@ def get_affine_params(template_data, matched_data):
     return affine_params
 
 
-def get_zoom_parameter(template_data, matched_data, axis):
+def get_zoom_parameter(template_1D_center, data, axis):
 
-    template_1D_len = template_data.shape[axis]
-    matched_1D_len = matched_data.shape[axis]
+    data_1D_len = data.shape[axis]
 
     if axis == 0:
-        template_1D = [template_data[i,:,:].mean() for i in range(template_1D_len)]
-        matched_1D = [matched_data[i,:,:].mean() for i in range(matched_1D_len)]
+        data_1D = data.mean(axis=(1,2))
 
     if axis == 1:
-        template_1D = [template_data[:, i, :].mean() for i in range(template_1D_len)]
-        matched_1D = [matched_data[:, i, :].mean() for i in range(matched_1D_len)]
+        data_1D = data.mean(axis=(0,2))
 
     if axis == 2:
-        template_1D = [template_data[:, :, i].mean() for i in range(template_1D_len)]
-        matched_1D = [matched_data[:, :, i].mean() for i in range(matched_1D_len)]
+        data_1D = data.mean(axis=(0,1))
 
-    template_1D = np.array(template_1D)
-    matched_1D = np.array(matched_1D)
+    data_1D = np.array(data_1D)
 
-    template_1D_center = int((ndimage.measurements.center_of_mass(template_1D))[0])
-    matched_1D_center = int((ndimage.measurements.center_of_mass(matched_1D))[0])
+    data_1D_center = int((ndimage.measurements.center_of_mass(data_1D))[0])
+    data_1D_center = max(data_1D_center, 3)
+    data_1D_center = min(data_1D_center, data_1D_len - 4)
 
-    if (template_1D_center == 0 or template_1D_center == template_1D_len - 1 or
-        matched_1D_center == 0 or matched_1D_center == matched_1D_len - 1):
-        return 1, template_1D_center, matched_1D_center
+    data_1D_left = data_1D[:data_1D_center]
+    data_1D_left_center = (ndimage.measurements.center_of_mass(data_1D_left))[0]
 
-    template_1D_left = template_1D[:template_1D_center]
-    matched_1D_left = matched_1D[:matched_1D_center]
-    template_1D_left_center = (ndimage.measurements.center_of_mass(template_1D_left))[0]
-    matched_1D_left_center = (ndimage.measurements.center_of_mass(matched_1D_left))[0]
+    data_1D_right = data_1D[data_1D_center:]
+    data_1D_right_center = (ndimage.measurements.center_of_mass(data_1D_right))[0]
 
-    template_1D_right = template_1D[template_1D_center:]
-    matched_1D_right = matched_1D[matched_1D_center:]
-    template_1D_right_center = (ndimage.measurements.center_of_mass(template_1D_right))[0]
-    matched_1D_right_center = (ndimage.measurements.center_of_mass(matched_1D_right))[0]
-    
-    # print('all  ', template_1D_center, matched_1D_center)
-    # print('left ', template_1D_left_center, matched_1D_left_center)
-    # print('right ', template_1D_right_center, matched_1D_right_center)
-    
-    zoom_left = (template_1D_left_center - template_1D_center) / (matched_1D_left_center - matched_1D_center)
-    zoom_right = (template_1D_right_center + 1) / (matched_1D_right_center + 1)
+    template_1D_center_dis = (template_1D_center + 1) / 2
+    zoom_left = template_1D_center_dis / (data_1D_center - data_1D_left_center)
+    zoom_right = template_1D_center_dis / (data_1D_right_center + 1)
     zoom_avg = (zoom_left + zoom_right) / 2
 
-    return zoom_avg, template_1D_center, matched_1D_center
+    # if np.isnan(data_1D_left_center):
+    #     print(' ')
+    # print(data_1D_left_center, data_1D_right_center, zoom_left, zoom_right)
+
+    return zoom_avg, data_1D_center
 
 
 def get_div(template_am, matched_am, show=False):

@@ -11,19 +11,24 @@ class DivideLearning:
         self._database = Database()
 
         self._divisor = 2
-        self._divide_level_limit = 4
-        self._block_overlap = 0.1
+        self._divide_level_limit = 3
         self._child_num = self._divisor ** 3
+
         self._block_num = 0
+        self._block_shape = []
+        self._leaf_block_shape = np.array([22, 27, 22], dtype=int)
+
         for i in range(self._divide_level_limit):
             self._block_num += self._child_num ** i
+            self._block_shape.append(self._leaf_block_shape * (self._divisor ** i))
+        self._block_shape = np.flip(np.array(self._block_shape), 0)
+        self._leaf_block_ids = range(self._child_num ** (self._divide_level_limit - 2) + 1, self._block_num)
 
-        self._attr_num = 11
+        self._attr_num = 8
         self._block_attr = np.zeros((self._block_num, self._attr_num))
+        self._block_data = np.zeros(np.hstack((self._block_num, self._block_shape[-1])))
+        self._block_am = np.zeros(np.hstack((self._block_num, self._block_shape[-1])))
         self._significant_block_num = 50
-
-    def load_group(self):
-        pass
 
     def train(self, data_path, dataset_name, st_group=None, resample=False):
 
@@ -33,36 +38,42 @@ class DivideLearning:
 
         while self._database.get_next_group() is not None:
 
-            group_age = self._database.get_group_index() - 1
+            group_age = self._database.get_cur_group_age()
 
-            print('\tGroup Age: {0}. '.format(group_age), end='')
+            print('\tGroup Age: {0}.'.format(group_age), end=' ')
 
             if st_group is not None and group_age < st_group:
                 print('Pass.')
                 continue
 
-            template_id, template_data, template_age = self._database.get_next_data_from_group()
-            template_am = utils.get_attention_map(template_data)
-
-            data_from_group_num = self._database.get_data_from_group_size() - 1
-            group_block_attr = np.zeros((data_from_group_num, self._block_num, self._attr_num))
+            data_from_group_num = self._database.get_data_from_group_size()
+            group_block_attr = np.zeros(((data_from_group_num,) + self._block_attr.shape))
+            group_block_data = np.zeros(((data_from_group_num,) + self._block_data.shape))
+            group_block_am = np.zeros(((data_from_group_num,) + self._block_am.shape))
 
             while self._database.has_next_data_from_group():
 
-                print(' ', str(self._database.get_data_from_group_index()))
+                index = self._database.get_data_from_group_index()
+                print(index, end=' ')
 
-                data_name, matched_data, age = self._database.get_next_data_from_group()
-                matched_am = utils.get_attention_map(matched_data)
-                self._divide(0, template_data, template_am, matched_data, matched_am)
+                data_name, data, age = self._database.get_next_data_from_group()
+                am = utils.get_attention_map(data)
+                self._divide(0, data, am)
 
-                group_block_attr[self._database.get_data_from_group_index() - 2] = self._block_attr
+                group_block_attr[index] = self._block_attr
+                group_block_data[index] = self._block_data
+                group_block_am[index] = self._block_am
 
             print(' ')
-            np.save('experiments/group_block_attr/' + str(group_age) + '.npy', group_block_attr)
+            # self._database.set_group_index(50)
+            # continue
+            np.save('experiments/group_block/' + str(group_age) + '_attr.npy', group_block_attr)
+            np.save('experiments/group_block/' + str(group_age) + '_data.npy', group_block_data)
+            np.save('experiments/group_block/' + str(group_age) + '_am.npy', group_block_am)
 
         print('Done.')
 
-    def _divide(self, block_id, template_data, template_am, matched_data, matched_am):
+    def _divide(self, block_id, data, am):
 
         divide_level = 0
         father_id = block_id
@@ -73,36 +84,31 @@ class DivideLearning:
         if divide_level == self._divide_level_limit:
             return
 
-        if min(template_data.shape) <= 2 or min(matched_data.shape) <= 2:
+        # print(data.shape)
+        if min(data.shape) < 5:
+            utils.show_3Ddata_comp(data, am, 'ORIGIN')
             return
 
+        template_center = self._block_shape[divide_level] / 2
         zoom_rate = np.zeros(3)
-        template_center = np.zeros(3, dtype=int)
-        matched_center = np.zeros(3, dtype=int)
+        data_center = np.zeros(3)
         for i in range(3):
-            zoom_rate[i], template_center[i], matched_center[i] = utils.get_zoom_parameter(template_am, matched_am, i)
-        offset = template_center - matched_center
+            zoom_rate[i], data_center[i] = utils.get_zoom_parameter(template_center[i], am, i)
+        offset = template_center - data_center
 
-        # print(block_id, zoom_rate, template_am.shape, matched_am.shape, template_center, matched_center)
+        # print(data.shape, template_center, data_center)
 
-        zoomed_matched_am = np.clip(ndimage.zoom(matched_am, zoom_rate), a_min=0, a_max=None)
-        zoomed_matched_data = np.clip(ndimage.zoom(matched_data, zoom_rate), a_min=0, a_max=None)
-        zoomed_matched_center = (matched_center * zoom_rate).astype(int)
-        zoomed_offset = template_center - zoomed_matched_center
+        zoomed_am = np.clip(ndimage.zoom(am, zoom_rate), a_min=0, a_max=None)
+        zoomed_data = ndimage.zoom(data, zoom_rate)
+        zoomed_data_center = data_center * zoom_rate
+        zoomed_offset = template_center - zoomed_data_center
 
-        # utils.show_3Ddata_comp(template_am, matched_am, 'PRE')
-        # utils.show_3Ddata_comp(template_am, zoomed_matched_am, 'AFTER')
+        data_mean = data.mean()
+        am_mean = am.mean()
 
-        zoomed_matched_am_proj = utils.get_template_proj(template_am, zoomed_matched_am, zoomed_offset)
-        zoomed_matched_data_proj = utils.get_template_proj(template_data, zoomed_matched_data, zoomed_offset)
+        self._block_attr[block_id] = np.r_[zoom_rate, offset, data_mean, am_mean]
 
-        am_mean = template_am.mean()
-        am_div = utils.get_div(template_am, zoomed_matched_am_proj)
-        am_significant = (am_mean + 1e-8) / (am_div + 1e-8)
-        intensity_mean = template_data.mean() - zoomed_matched_data_proj.mean()
-        valid = 1
-
-        self._block_attr[block_id] = np.r_[zoom_rate, offset, intensity_mean, am_mean, am_div, am_significant, valid]
+        # print(block_id, self._block_attr[block_id], data_center, zoomed_offset)
 
         # print(block_id, self._block_attr[block_id])
         # print(template_am.shape, template_center, matched_am.shape, matched_center)
@@ -111,96 +117,135 @@ class DivideLearning:
         #     utils.show_3Ddata_comp(template_am, zoomed_matched_am_proj, 'PROJECTION')
 
         if divide_level == self._divide_level_limit - 1:
+
+            proj_data = utils.get_template_proj(self._block_shape[divide_level], zoomed_data, zoomed_offset)
+            proj_am = utils.get_template_proj(self._block_shape[divide_level], zoomed_am, zoomed_offset)
+
+            self._block_data[block_id] = proj_data
+            self._block_am[block_id] = proj_am
+
+            # if block_id == 37:
+            #     print(block_id, self._block_attr[block_id], data_center, zoomed_offset)
+            #     utils.show_3Ddata_comp(am, proj_am, 'AM')
             return
         
         sub_block_id = block_id * 8
+        zoomed_data_center = zoomed_data_center.astype(int)
 
         for i in range(2):
 
-            template_block_overlap = int(self._block_overlap * template_am.shape[0])
-            matched_block_overlap = int(self._block_overlap * matched_am.shape[0])
             if i == 0:
-                template_block_anchor0 = [0, template_center[0] + template_block_overlap]
-                matched_block_anchor0 = [0, zoomed_matched_center[0] + matched_block_overlap]
+                block_anchor0 = [0, zoomed_data_center[0]]
             else:
-                template_block_anchor0 = [template_center[0] - template_block_overlap, template_am.shape[0]]
-                matched_block_anchor0 = [zoomed_matched_center[0] - matched_block_overlap, matched_am.shape[0]]
-                
+                block_anchor0 = [zoomed_data_center[0], zoomed_data.shape[0]]
+
             for j in range(2):
 
-                template_block_overlap = int(self._block_overlap * template_am.shape[1])
-                matched_block_overlap = int(self._block_overlap * matched_am.shape[1])
                 if j == 0:
-                    template_block_anchor1 = [0, template_center[1] + template_block_overlap]
-                    matched_block_anchor1 = [0, zoomed_matched_center[1] + matched_block_overlap]
+                    block_anchor1 = [0, zoomed_data_center[1]]
                 else:
-                    template_block_anchor1 = [template_center[1] - template_block_overlap, template_am.shape[1]]
-                    matched_block_anchor1 = [zoomed_matched_center[1] - matched_block_overlap, matched_am.shape[1]]
+                    block_anchor1 = [zoomed_data_center[1], zoomed_data.shape[1]]
 
                 for k in range(2):
 
-                    template_block_overlap = int(self._block_overlap * template_am.shape[2])
-                    matched_block_overlap = int(self._block_overlap * matched_am.shape[2])
                     if k == 0:
-                        template_block_anchor2 = [0, template_center[2] + template_block_overlap]
-                        matched_block_anchor2 = [0, zoomed_matched_center[2] + matched_block_overlap]
+                        block_anchor2 = [0, zoomed_data_center[2]]
                     else:
-                        template_block_anchor2 = [template_center[2] - template_block_overlap, template_am.shape[2]]
-                        matched_block_anchor2 = [zoomed_matched_center[2] - matched_block_overlap, matched_am.shape[2]]
+                        block_anchor2 = [zoomed_data_center[2], zoomed_data.shape[2]]
 
-                    sub_template_data = template_data[
-                                            template_block_anchor0[0]:template_block_anchor0[1],
-                                            template_block_anchor1[0]:template_block_anchor1[1],
-                                            template_block_anchor2[0]:template_block_anchor2[1]]
-                    sub_template_am = template_am[
-                                          template_block_anchor0[0]:template_block_anchor0[1],
-                                          template_block_anchor1[0]:template_block_anchor1[1],
-                                          template_block_anchor2[0]:template_block_anchor2[1]]
-                    sub_matched_data = zoomed_matched_data[
-                                           matched_block_anchor0[0]:matched_block_anchor0[1],
-                                           matched_block_anchor1[0]:matched_block_anchor1[1],
-                                           matched_block_anchor2[0]:matched_block_anchor2[1]]
-                    sub_matched_am = zoomed_matched_am[
-                                         matched_block_anchor0[0]:matched_block_anchor0[1],
-                                         matched_block_anchor1[0]:matched_block_anchor1[1],
-                                         matched_block_anchor2[0]:matched_block_anchor2[1]]
+                    # print(block_anchor0, block_anchor1, block_anchor2)
+
+                    sub_data = zoomed_data[
+                               block_anchor0[0]:block_anchor0[1],
+                               block_anchor1[0]:block_anchor1[1],
+                               block_anchor2[0]:block_anchor2[1]]
+                    sub_am = zoomed_am[
+                             block_anchor0[0]:block_anchor0[1],
+                             block_anchor1[0]:block_anchor1[1],
+                             block_anchor2[0]:block_anchor2[1]]
 
                     sub_block_id += 1
 
-                    self._divide(sub_block_id, sub_template_data, sub_template_am, sub_matched_data, sub_matched_am)
+                    self._divide(sub_block_id, sub_data, sub_am)
 
     def induce(self, data_path, dataset_name):
 
         print('Inductive Learning. Dataset {0}.'.format(dataset_name))
 
         self._database.load_database(data_path, dataset_name, mode='training')
-        group_block_path = 'experiments/group_block_attr/'
+        group_block_path = 'experiments/group_block/'
 
-        group_block_params = np.zeros((self._database.get_group_size(), self._block_num))
+        param_shape = np.r_[self._database.get_group_size(), 3, self._block_num, self._leaf_block_shape].astype(int)
+        mean_shape = np.r_[self._database.get_group_size(), self._block_num, self._leaf_block_shape].astype(int)
+        cov_shape = np.r_[3, self._block_num, self._leaf_block_shape].astype(int)
 
-        for group_id in range(self._database.get_group_size()):
+        group_block_params = np.zeros(param_shape)
+        group_block_mean = np.zeros(mean_shape)
 
-            group_age = group_id + self._database.get_group_st()
+        while self._database.get_next_group() is not None:
 
-            print('group age ', group_age)
+            group_age = self._database.get_cur_group_age()
 
-            group_block_attr = np.load(group_block_path + str(group_age) + '.npy')
-            group_block_attr = group_block_attr[:,:,8] * (1/group_block_attr[:,:,10])
+            print('Group Age: ', group_age)
 
-            group_block_pct = [np.percentile(group_block_attr[:, block_id], 80) for block_id in range(self._block_num)]
+            if group_age < 30: continue
 
-            group_block_params[group_id] = np.array(group_block_pct)
+            group_block_attr = np.load(group_block_path + str(group_age) + '_attr.npy')
+            group_block_data = np.load(group_block_path + str(group_age) + '_data.npy')
+            group_block_am = np.load(group_block_path + str(group_age) + '_am.npy')
+
+            # for object_id in range(group_block_am.shape[0]):
+            #     print(object_id, group_block_attr[object_id, 30])
+            #     utils.show_3Ddata_comp(group_block_data[object_id,30], group_block_am[object_id,30])
+
+            group_block_data_mean = group_block_data.mean(axis=0)
+            # group_block_am_mean = group_block_am.mean(axis=0)
+
+            group_block_data -= group_block_data_mean
+            # group_block_am -= group_block_am_mean
+
+            block_data_cov0 = np.zeros(group_block_data.shape)
+            for i in range(1, self._leaf_block_shape[0]):
+                block_data_cov0[:,:,i] = group_block_data[:,:,i-1] * group_block_data[:,:,i]
+
+            block_data_cov1 = np.zeros(group_block_data.shape)
+            for i in range(1, self._leaf_block_shape[1]):
+                block_data_cov1[:,:,:,i] = group_block_data[:,:,:,i-1] * group_block_data[:,:,:,i]
+
+            block_data_cov2 = np.zeros(group_block_data.shape)
+            for i in range(1, self._leaf_block_shape[2]):
+                block_data_cov2[:,:,:,:,i] = group_block_data[:,:,:,:,i-1] * group_block_data[:,:,:,:,i]
+
+            block_data_cov = np.zeros(cov_shape)
+            block_data_cov[0] = block_data_cov0.mean(axis=0)
+            block_data_cov[1] = block_data_cov1.mean(axis=0)
+            block_data_cov[2] = block_data_cov2.mean(axis=0)
+
+            for block_id in self._leaf_block_ids:
+                block_id += 25
+                print(block_id)
+                utils.show_3Ddata(block_data_cov[0,block_id])
+                if block_id >= 35:
+                    break
+
+            np.save(group_block_path + str(group_age) + '_cov.npy', block_data_cov)
+
+            group_block_params[self._database.get_group_index()-1] = block_data_cov
+            group_block_mean[self._database.get_group_index()-1] = group_block_data_mean
 
         np.save(group_block_path + 'group_block_params.npy', group_block_params)
+        np.save(group_block_path + 'group_block_mean.npy', group_block_mean)
 
     def test(self, data_path, dataset_name, mode):
 
         print('Test model. Dataset {0}. Mode {1}'.format(dataset_name, mode))
 
         self._database.load_database(data_path, dataset_name, mode=mode)
-        group_block_path = 'experiments/group_block_attr/'
+        group_block_path = 'experiments/group_block/'
 
         group_block_params = np.load(group_block_path + 'group_block_params.npy')
+        group_block_mean = np.load(group_block_path + 'group_block_mean.npy')
+        cov_shape = np.r_[self._database.get_group_size(), 3, self._block_num, self._leaf_block_shape].astype(int)
 
         MAE = 0
 
@@ -209,50 +254,38 @@ class DivideLearning:
             data_name, test_data, test_age = self._database.get_next_data_from_dataset()
             test_am = utils.get_attention_map(test_data)
 
-            print(self._database.get_data_from_dataset_index(), ' Age ', test_age)
+            print(self._database.get_data_from_dataset_index(), ' Age: ', test_age)
 
-            # self._database.set_group_index(int(test_age))
-            # self._database.set_group_index(33)
-            self._database.set_group_index()
+            self._divide(0, test_data, test_am)
+            
+            block_am = self._block_am - group_block_mean
 
-            best_group_age = 0
-            best_significant = np.inf
+            block_am_cov0 = np.zeros(block_am.shape)
+            for i in range(1, self._leaf_block_shape[0]):
+                block_am_cov0[:,:,i] = block_am[:,:,i-1] * block_am[:,:,i]
 
-            while self._database.get_next_group() is not None:
+            block_am_cov1 = np.zeros(block_am.shape)
+            for i in range(1, self._leaf_block_shape[1]):
+                block_am_cov1[:,:,:,i] = block_am[:,:,:,i-1] * block_am[:,:,:,i]
 
-                group_age = self._database.get_group_index() - 1
-                group_id = group_age - self._database.get_group_st()
+            block_am_cov2 = np.zeros(block_am.shape)
+            for i in range(1, self._leaf_block_shape[2]):
+                block_am_cov2[:,:,:,:,i] = block_am[:,:,:,:,i-1] * block_am[:,:,:,:,i]
 
-                print('\tGroup Age: {0}. '.format(group_age), end='')
+            block_am_cov = np.zeros(cov_shape)
+            block_am_cov[:,0] = block_am_cov0
+            block_am_cov[:,1] = block_am_cov1
+            block_am_cov[:,2] = block_am_cov2
 
-                template_id, template_data, template_age = self._database.get_next_data_from_group()
-                template_am = utils.get_attention_map(template_data)
+            group_block_div = abs(group_block_params - block_am_cov).sum(axis=(1,3,4,5))
+            block_age = np.argmin(group_block_div, axis=0)
+            unique, counts = np.unique(block_age, return_counts=True)
+            age_stats = dict(zip(unique, counts))
 
-                self._divide(0, template_data, template_am, test_data, test_am)
+            print(age_stats)
 
-                block_attr = self._block_attr[:, 8] * ( 1/self._block_attr[:, 10] )
-                block_sum = 0
-                # matched_block_sum = 0
-                significant_sum = 0
-                for block_id in range(self._block_num):
-                    if group_block_params[group_id, block_id] > 0.2:
-                        continue
-                    # if group_age == 39:
-                    # print(block_id, block_attr[block_id], group_block_params[group_id, block_id])
-                    block_sum += 1
-                    significant_sum += block_attr[block_id]
-                    # if block_attr[block_id] > group_block_params[group_id, block_id]:
-                    #     matched_block_sum += 1
-
-                significant_avg = significant_sum / block_sum
-
-                if best_significant > significant_avg:
-                    best_significant = significant_avg
-                    best_group_age = group_age
-
-                print('#blocks:', block_sum, 's:', significant_avg, 'best_age:', best_group_age)
-
-            error = abs(best_group_age - test_age)
+            predicted_age = 0
+            error = abs(predicted_age - test_age)
             print(' Err: ', error)
 
             MAE += error

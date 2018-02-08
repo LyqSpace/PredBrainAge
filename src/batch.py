@@ -145,8 +145,8 @@ def normalize_npy(file_name=None):
 
         data = np.load(path + name)
 
-        resized_data = ndimage.zoom(data, (0.5, 0.5, 0.5))
-
+        # resized_data = ndimage.zoom(data, (0.5, 0.5, 0.5))
+        resized_data = data
         # new_data = (data - data.mean()) / data.std()
         new_data = (resized_data - resized_data.mean()) / resized_data.std()
 
