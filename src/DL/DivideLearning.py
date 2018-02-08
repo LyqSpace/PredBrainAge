@@ -32,7 +32,7 @@ class DivideLearning:
         self._block_am = np.zeros(np.hstack((self._leaf_block_num, self._block_shape[-1])))
         self._significant_block_num = 50
 
-    def train(self, data_path, dataset_name, st_group=None, resample=False):
+    def divide(self, data_path, dataset_name, st_group=None, resample=False):
 
         self._database.load_database(data_path, dataset_name, mode='training', resample=resample)
 
@@ -51,7 +51,7 @@ class DivideLearning:
             print(index, data_name, age)
 
             am = utils.get_attention_map(data)
-            self._divide(0, data, am)
+            self._divide_block(0, data, am)
 
             block_attr[index] = self._block_attr
             block_data[index] = self._block_data
@@ -63,7 +63,7 @@ class DivideLearning:
 
         print('Done.')
 
-    def _divide(self, block_id, data, am):
+    def _divide_block(self, block_id, data, am):
 
         divide_level = 0
         father_id = block_id
@@ -148,7 +148,7 @@ class DivideLearning:
 
                     sub_block_id += 1
 
-                    self._divide(sub_block_id, sub_data, sub_am)
+                    self._divide_block(sub_block_id, sub_data, sub_am)
 
     def induce(self, data_path, dataset_name):
 
@@ -162,7 +162,7 @@ class DivideLearning:
         block_am = np.load(block_path + 'block_am.npy')
 
         res_net = resnet()
-        res_net.train()
+        res_net.divide()
         res_net.cuda()
 
         while self._database.has_next_data():
@@ -190,7 +190,7 @@ class DivideLearning:
 
             print(self._database.get_data_from_dataset_index(), ' Age: ', test_age)
 
-            self._divide(0, test_data, test_am)
+            self._divide_block(0, test_data, test_am)
             
             block_am = self._block_am - group_block_mean
 

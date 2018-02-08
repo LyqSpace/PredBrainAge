@@ -69,7 +69,7 @@ def main(st_group, resample, divide, induce):
     divide_model = DivideLearning()
 
     if divide:
-        divide_model.train(data_path, dataset_name, st_group=st_group, resample=resample)
+        divide_model.divide(data_path, dataset_name, st_group=st_group, resample=resample)
 
     if induce:
         divide_model.induce(data_path, dataset_name)
