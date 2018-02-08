@@ -2,6 +2,7 @@ from scipy import ndimage, stats
 import numpy as np
 
 from src.DL.Database import Database
+from src.DL.ResNet import resnet
 import src.utils as utils
 
 
@@ -22,12 +23,13 @@ class DivideLearning:
             self._block_num += self._child_num ** i
             self._block_shape.append(self._leaf_block_shape * (self._divisor ** i))
         self._block_shape = np.flip(np.array(self._block_shape), 0)
-        self._leaf_block_ids = range(self._child_num ** (self._divide_level_limit - 2) + 1, self._block_num)
+        self._leaf_block_id_st = self._child_num ** (self._divide_level_limit - 2) + 1
+        self._leaf_block_num = self._child_num ** (self._divide_level_limit - 1)
 
         self._attr_num = 8
         self._block_attr = np.zeros((self._block_num, self._attr_num))
-        self._block_data = np.zeros(np.hstack((self._block_num, self._block_shape[-1])))
-        self._block_am = np.zeros(np.hstack((self._block_num, self._block_shape[-1])))
+        self._block_data = np.zeros(np.hstack((self._leaf_block_num, self._block_shape[-1])))
+        self._block_am = np.zeros(np.hstack((self._leaf_block_num, self._block_shape[-1])))
         self._significant_block_num = 50
 
     def train(self, data_path, dataset_name, st_group=None, resample=False):
@@ -36,40 +38,28 @@ class DivideLearning:
 
         print('Divide data. Dataset {0}. Resample {1}.'.format(dataset_name, resample))
 
-        while self._database.get_next_group() is not None:
+        data_num = self._database.get_data_size()
+        block_attr = np.zeros(((data_num,) + self._block_attr.shape))
+        block_data = np.zeros(((data_num,) + self._block_data.shape))
+        block_am = np.zeros(((data_num,) + self._block_am.shape))
 
-            group_age = self._database.get_cur_group_age()
+        while self._database.has_next_data():
 
-            print('\tGroup Age: {0}.'.format(group_age), end=' ')
+            index = self._database.get_data_index()
+            data_name, data, age = self._database.get_next_data()
 
-            if st_group is not None and group_age < st_group:
-                print('Pass.')
-                continue
+            print(index, data_name, age)
 
-            data_from_group_num = self._database.get_data_from_group_size()
-            group_block_attr = np.zeros(((data_from_group_num,) + self._block_attr.shape))
-            group_block_data = np.zeros(((data_from_group_num,) + self._block_data.shape))
-            group_block_am = np.zeros(((data_from_group_num,) + self._block_am.shape))
+            am = utils.get_attention_map(data)
+            self._divide(0, data, am)
 
-            while self._database.has_next_data_from_group():
+            block_attr[index] = self._block_attr
+            block_data[index] = self._block_data
+            block_am[index] = self._block_am
 
-                index = self._database.get_data_from_group_index()
-                print(index, end=' ')
-
-                data_name, data, age = self._database.get_next_data_from_group()
-                am = utils.get_attention_map(data)
-                self._divide(0, data, am)
-
-                group_block_attr[index] = self._block_attr
-                group_block_data[index] = self._block_data
-                group_block_am[index] = self._block_am
-
-            print(' ')
-            # self._database.set_group_index(50)
-            # continue
-            np.save('experiments/group_block/' + str(group_age) + '_attr.npy', group_block_attr)
-            np.save('experiments/group_block/' + str(group_age) + '_data.npy', group_block_data)
-            np.save('experiments/group_block/' + str(group_age) + '_am.npy', group_block_am)
+        np.save('experiments/block_attr.npy', block_attr)
+        np.save('experiments/block_data.npy', block_data)
+        np.save('experiments/block_am.npy', block_am)
 
         print('Done.')
 
@@ -108,21 +98,13 @@ class DivideLearning:
 
         self._block_attr[block_id] = np.r_[zoom_rate, offset, data_mean, am_mean]
 
-        # print(block_id, self._block_attr[block_id], data_center, zoomed_offset)
-
-        # print(block_id, self._block_attr[block_id])
-        # print(template_am.shape, template_center, matched_am.shape, matched_center)
-
-        # if divide_level > 2:
-        #     utils.show_3Ddata_comp(template_am, zoomed_matched_am_proj, 'PROJECTION')
-
         if divide_level == self._divide_level_limit - 1:
 
             proj_data = utils.get_template_proj(self._block_shape[divide_level], zoomed_data, zoomed_offset)
             proj_am = utils.get_template_proj(self._block_shape[divide_level], zoomed_am, zoomed_offset)
 
-            self._block_data[block_id] = proj_data
-            self._block_am[block_id] = proj_am
+            self._block_data[block_id - self._leaf_block_id_st] = proj_data
+            self._block_am[block_id - self._leaf_block_id_st] = proj_am
 
             # if block_id == 37:
             #     print(block_id, self._block_attr[block_id], data_center, zoomed_offset)
@@ -173,68 +155,20 @@ class DivideLearning:
         print('Inductive Learning. Dataset {0}.'.format(dataset_name))
 
         self._database.load_database(data_path, dataset_name, mode='training')
-        group_block_path = 'experiments/group_block/'
+        block_path = 'experiments/'
 
-        param_shape = np.r_[self._database.get_group_size(), 3, self._block_num, self._leaf_block_shape].astype(int)
-        mean_shape = np.r_[self._database.get_group_size(), self._block_num, self._leaf_block_shape].astype(int)
-        cov_shape = np.r_[3, self._block_num, self._leaf_block_shape].astype(int)
+        block_attr = np.load(block_path + 'block_attr.npy')
+        block_data = np.load(block_path + 'block_data.npy')
+        block_am = np.load(block_path + 'block_am.npy')
 
-        group_block_params = np.zeros(param_shape)
-        group_block_mean = np.zeros(mean_shape)
+        res_net = resnet()
+        res_net.train()
+        res_net.cuda()
 
-        while self._database.get_next_group() is not None:
+        while self._database.has_next_data():
 
-            group_age = self._database.get_cur_group_age()
+            index = self._database.get_data_index()
 
-            print('Group Age: ', group_age)
-
-            if group_age < 30: continue
-
-            group_block_attr = np.load(group_block_path + str(group_age) + '_attr.npy')
-            group_block_data = np.load(group_block_path + str(group_age) + '_data.npy')
-            group_block_am = np.load(group_block_path + str(group_age) + '_am.npy')
-
-            # for object_id in range(group_block_am.shape[0]):
-            #     print(object_id, group_block_attr[object_id, 30])
-            #     utils.show_3Ddata_comp(group_block_data[object_id,30], group_block_am[object_id,30])
-
-            group_block_data_mean = group_block_data.mean(axis=0)
-            # group_block_am_mean = group_block_am.mean(axis=0)
-
-            group_block_data -= group_block_data_mean
-            # group_block_am -= group_block_am_mean
-
-            block_data_cov0 = np.zeros(group_block_data.shape)
-            for i in range(1, self._leaf_block_shape[0]):
-                block_data_cov0[:,:,i] = group_block_data[:,:,i-1] * group_block_data[:,:,i]
-
-            block_data_cov1 = np.zeros(group_block_data.shape)
-            for i in range(1, self._leaf_block_shape[1]):
-                block_data_cov1[:,:,:,i] = group_block_data[:,:,:,i-1] * group_block_data[:,:,:,i]
-
-            block_data_cov2 = np.zeros(group_block_data.shape)
-            for i in range(1, self._leaf_block_shape[2]):
-                block_data_cov2[:,:,:,:,i] = group_block_data[:,:,:,:,i-1] * group_block_data[:,:,:,:,i]
-
-            block_data_cov = np.zeros(cov_shape)
-            block_data_cov[0] = block_data_cov0.mean(axis=0)
-            block_data_cov[1] = block_data_cov1.mean(axis=0)
-            block_data_cov[2] = block_data_cov2.mean(axis=0)
-
-            for block_id in self._leaf_block_ids:
-                block_id += 25
-                print(block_id)
-                utils.show_3Ddata(block_data_cov[0,block_id])
-                if block_id >= 35:
-                    break
-
-            np.save(group_block_path + str(group_age) + '_cov.npy', block_data_cov)
-
-            group_block_params[self._database.get_group_index()-1] = block_data_cov
-            group_block_mean[self._database.get_group_index()-1] = group_block_data_mean
-
-        np.save(group_block_path + 'group_block_params.npy', group_block_params)
-        np.save(group_block_path + 'group_block_mean.npy', group_block_mean)
 
     def test(self, data_path, dataset_name, mode):
 
