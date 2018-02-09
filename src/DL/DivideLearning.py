@@ -248,8 +248,9 @@ class DivideLearning:
                 print(message)
                 logger.log(message)
 
-                comp = np.c_[predicted_age.data.cpu().numpy(), age.data.cpu().numpy()[:, :, 0]]
-                print(comp)
+                comp_res = np.c_[predicted_age.data.cpu().numpy(), age.data.cpu().numpy()[:, :, 0]]
+                print(comp_res)
+                logger.log(comp_res)
 
             torch.save(resnet, exper_path + 'resnet.pkl')
 
