@@ -5,7 +5,6 @@ from nilearn.datasets import load_mni152_template
 import nibabel.affines as ni_affine
 import re
 import numpy as np
-import src.utils as utils
 from scipy import ndimage
 
 

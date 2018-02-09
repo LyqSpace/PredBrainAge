@@ -226,10 +226,10 @@ class DivideLearning:
 
             for batch_id, sample in enumerate(data_loader):
 
+                data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].unsqueeze(dim=1).float()
+
                 if use_cpu is False:
-                    data, age = sample['data'].cuda(), sample['age'].cuda()
-                else:
-                    data, age = sample['data'], sample['age']
+                    data, age = data.cuda(), age.cuda()
 
                 data, age = Variable(data), Variable(age)
 
@@ -248,63 +248,58 @@ class DivideLearning:
                 print(message)
                 logger.log(message)
 
+                comp = np.c_[predicted_age.data.cpu().numpy(), age.data.cpu().numpy()[:, :, 0]]
+                print(comp)
+
             torch.save(resnet, exper_path + 'resnet.pkl')
 
-
-    def test(self, data_path, dataset_name, mode):
+    def test(self, data_path, dataset_name, mode, use_cpu):
 
         print('Test model. Dataset {0}. Mode {1}'.format(dataset_name, mode))
 
         self._database.load_database(data_path, dataset_name, mode=mode)
-        group_block_path = 'experiments/group_block/'
+        exper_path = 'experiments/'
 
-        group_block_params = np.load(group_block_path + 'group_block_params.npy')
-        group_block_mean = np.load(group_block_path + 'group_block_mean.npy')
-        cov_shape = np.r_[self._database.get_group_size(), 3, self._block_num, self._leaf_block_shape].astype(int)
+        print('Construct ResNet. Load from pkl file.')
+        # resnet = torch.load(exper_path + 'resnet.pkl')
+        resnet = create_resnet()
 
-        MAE = 0
+        resnet.float()
+        resnet.eval()
+        if use_cpu is False:
+            cudnn.enabled = True
+            resnet.cuda()
+        else:
+            cudnn.enabled = False
 
-        while self._database.has_next_data_from_dataset():
+        MSE = 0
+        test_result_list = []
+        data_num = self._database.get_data_size()
 
-            data_name, test_data, test_age = self._database.get_next_data_from_dataset()
+        while self._database.has_next_data():
+
+            index = self._database.get_data_index()
+            data_name, test_data, test_age = self._database.get_next_data()
             test_am = utils.get_attention_map(test_data)
 
-            print(self._database.get_data_from_dataset_index(), ' Age: ', test_age)
-
             self._divide_block(0, test_data, test_am)
-            
-            block_am = self._block_am - group_block_mean
 
-            block_am_cov0 = np.zeros(block_am.shape)
-            for i in range(1, self._leaf_block_shape[0]):
-                block_am_cov0[:,:,i] = block_am[:,:,i-1] * block_am[:,:,i]
+            data = torch.from_numpy(self._block_data).unsequence(dim=1).float()
+            predicted_age = resnet(data)
 
-            block_am_cov1 = np.zeros(block_am.shape)
-            for i in range(1, self._leaf_block_shape[1]):
-                block_am_cov1[:,:,:,i] = block_am[:,:,:,i-1] * block_am[:,:,:,i]
+            predicted_age = predicted_age.data.cpu().numpy()[0][0]
 
-            block_am_cov2 = np.zeros(block_am.shape)
-            for i in range(1, self._leaf_block_shape[2]):
-                block_am_cov2[:,:,:,:,i] = block_am[:,:,:,:,i-1] * block_am[:,:,:,:,i]
-
-            block_am_cov = np.zeros(cov_shape)
-            block_am_cov[:,0] = block_am_cov0
-            block_am_cov[:,1] = block_am_cov1
-            block_am_cov[:,2] = block_am_cov2
-
-            group_block_div = abs(group_block_params - block_am_cov).sum(axis=(1,3,4,5))
-            block_age = np.argmin(group_block_div, axis=0)
-            unique, counts = np.unique(block_age, return_counts=True)
-            age_stats = dict(zip(unique, counts))
-
-            print(age_stats)
-
-            predicted_age = 0
             error = abs(predicted_age - test_age)
-            print(' Err: ', error)
+            MSE += error
 
-            MAE += error
+            test_result_list.append((test_age, predicted_age, error))
 
-        MAE /= self._database.get_data_from_dataset_size()
-        print('Total MAE: ', MAE)
+        MSE /= data_num
 
+        test_result_list.sort(key=lambda data: data[2])
+        CI_75 = test_result_list[int(0.75 * data_num)][2]
+        CI_95 = test_result_list[int(0.95 * data_num)][2]
+
+        print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MSE, CI_75, CI_95))
+
+        utils.plot_scatter(test_result_list, CI_75, CI_95, exper_path)

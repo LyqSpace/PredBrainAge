@@ -5,6 +5,7 @@ from skimage import feature
 from skimage import measure
 from skimage import transform
 import numpy as np
+import torch
 
 
 def show_scatter(x, y, title=None):
@@ -456,6 +457,42 @@ def get_div(template_am, matched_am, show=False):
     div = (abs(template_am_gaussian - matched_am_gaussian)).mean()
 
     return div
+
+
+def plot_scatter(res_list, interval75, interval95, path):
+
+    size = len(res_list)
+    for i in range(size):
+        plt.scatter(res_list[i][0], res_list[i][1], s=5, c='red')
+
+    x = np.linspace(15, 85, 100)
+    y = x
+    plt.plot(x, y, color='blue', linewidth=1)
+
+    y = x + interval75
+    plt.plot(x, y, color='green', linewidth=1, linestyle='--', label='75% Confidence Interval')
+
+    y = x - interval75
+    plt.plot(x, y, color='green', linewidth=1, linestyle='--')
+
+    y = x + interval95
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--', label='95% Confidence Interval')
+
+    y = x - interval95
+    plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
+
+    plt.title('Predict Brain Age Results')
+    plt.xlim(10, 90)
+    plt.ylim(10, 90)
+    plt.xlabel('Real Age')
+    plt.ylabel('Predicted Age')
+    plt.legend()
+    plt.grid(True)
+
+    plt.savefig(path + 'PredictResults.png')
+
+    print("PredictResults.png saved.")
+
 
 
 if __name__ == '__main__':

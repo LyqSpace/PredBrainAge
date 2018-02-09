@@ -22,8 +22,8 @@ class BlockDataset(Dataset):
         block_id = idx % self._object_block_num
 
         sample = {
-            'data': torch.from_numpy(self._block_data[object_id][block_id]).unsqueeze(0).float(),
-            'age': torch.from_numpy(np.array([self._object_ages[object_id]])).unsqueeze(0).float()
+            'data': torch.from_numpy(self._block_data[object_id][block_id]),
+            'age': torch.from_numpy(np.array([self._object_ages[object_id]]))
         }
 
         return sample
