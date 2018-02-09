@@ -86,7 +86,8 @@ class Database:
         else:
             return False
 
-    def get_next_data(self):
+    def get_next_data(self, required_data=True):
+
         if self._dataset_loaded is False:
             raise Exception('Dataset must be loaded first.')
 
@@ -95,7 +96,9 @@ class Database:
 
         row_series = self._dataset_df.iloc[self._data_index]
         data_id = str(int(row_series['IXI_ID']))
-        data = np.load(self._data_path + self._dataset_name + '/' + data_id + '.npy')
+        data = None
+        if required_data:
+            data = np.load(self._data_path + self._dataset_name + '/' + data_id + '.npy')
 
         self._data_index += 1
 

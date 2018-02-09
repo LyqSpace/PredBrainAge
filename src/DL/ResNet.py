@@ -1,5 +1,8 @@
+import torch
 import torch.nn as nn
+from torch.autograd import Variable
 import math
+from torchvision.models.resnet import resnet18
 
 
 class BasicBlock(nn.Module):
@@ -8,9 +11,10 @@ class BasicBlock(nn.Module):
     def __init__(self, in_planes, planes, stride=1, down_sample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv3d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn = nn.BatchNorm3d(planes)
+        self.bn1 = nn.BatchNorm3d(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv3d(in_planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm3d(planes)
         self.down_sample = down_sample
         self.stride = stride
 
@@ -18,14 +22,14 @@ class BasicBlock(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        out = self.bn(out)
+        out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn(out)
+        out = self.bn2(out)
 
-        if self.downsample is not None:
-            residual = self.downsample(x)
+        if self.down_sample is not None:
+            residual = self.down_sample(x)
 
         out += residual
         out = self.relu(out)
@@ -35,23 +39,24 @@ class BasicBlock(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers):
 
-        first_planes = 32
+        self.planes = 32
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv3d(1, first_planes, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn = nn.BatchNorm3d(first_planes)
+        self.conv = nn.Conv3d(1, self.planes, kernel_size=5, stride=1, padding=2, bias=False)
+        self.bn = nn.BatchNorm3d(self.planes)
         self.relu = nn.ReLU(inplace=True)
         self.max_pool = nn.MaxPool3d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, first_planes, layers[0])
-        self.layer2 = self._make_layer(block, first_planes*2, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, first_planes*4, layers[2], stride=2)
-        self.avg_pool = nn.AvgPool3d(7)
-        self.fc = nn.Linear(first_planes*4 * block.expansion, num_classes)
+
+        self.layer1 = self._make_layer(block, 32, layers[0])
+        self.layer2 = self._make_layer(block, 64, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 128, layers[2], stride=2)
+        self.avg_pool = nn.AvgPool3d(kernel_size=(3,4,3))
+        self.fc = nn.Linear(128 * block.expansion, 1)
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                n = m.kernel_size[0] * m.kernel_size[1] * m.kernel_size[2] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
             elif isinstance(m, nn.BatchNorm3d):
                 m.weight.data.fill_(1)
@@ -59,30 +64,29 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block, planes, blocks, stride=1):
         down_sample = None
-        if stride != 1 or self.first_planes != planes * block.expansion:
+        if stride != 1 or self.planes != planes * block.expansion:
             down_sample = nn.Sequential(
-                nn.Conv3d(self.first_planes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.Conv3d(self.planes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm3d(planes * block.expansion),
             )
 
         layers = []
-        layers.append(block(self.first_planes, planes, stride, down_sample))
-        self.first_planes = planes * block.expansion
+        layers.append(block(self.planes, planes, stride, down_sample))
+        self.planes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(self.first_planes, planes))
+            layers.append(block(self.planes, planes))
 
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
+        x = self.conv(x)
+        x = self.bn(x)
         x = self.relu(x)
         x = self.max_pool(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.layer4(x)
 
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
@@ -91,7 +95,23 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet(**kwargs):
+def create_resnet(**kwargs):
 
-    model = ResNet(BasicBlock, [2, 2, 2], **kwargs)
+    model = ResNet(BasicBlock, [2, 2, 2])
     return model
+
+
+if __name__ == '__main__':
+
+    # official_net = resnet18()
+    # print(official_net)
+    #
+    # print('\n\nend\n\n')
+
+    resnet = create_resnet()
+    print(resnet)
+    # resnet.cuda()
+    # input = Variable(torch.randn(1, 1, 21, 27, 21).cuda())
+    input = Variable(torch.randn(1, 1, 22, 27, 22))
+    output = resnet(input)
+    print(output)

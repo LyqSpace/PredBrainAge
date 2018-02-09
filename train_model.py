@@ -14,11 +14,16 @@ def get_user_params():
                         dest='resample',
                         default=False,
                         help='Resample the data.')
-        opts.add_option('--st_group',
-                        dest='st_group',
-                        type=int,
-                        default=0,
-                        help='The beginning group age in the training process.')
+        opts.add_option('--retrain',
+                        action='store_true',
+                        dest='retrain',
+                        default=False,
+                        help='Retrain the net.')
+        opts.add_option('--cpu',
+                        action='store_true',
+                        dest='cpu',
+                        default=False,
+                        help='Train the model by cpu.')
         opts.add_option('--divide',
                         action='store_true',
                         dest='divide',
@@ -32,20 +37,19 @@ def get_user_params():
 
         options, args = opts.parse_args()
         resample = options.resample
-        st_group = options.st_group
+        retrain = options.retrain
+        use_cpu = options.cpu
         divide = options.divide
         induce = options.induce
 
         err_messages = []
         check_opts = True
-        if st_group < 0:
-            err_messages.append('st_group must be a non-negative integer.')
-            check_opts = False
 
         if check_opts:
             user_params = {
                 'resample': resample,
-                'st_group': st_group,
+                'retrain': retrain,
+                'use_cpu': use_cpu,
                 'divide': divide,
                 'induce': induce
             }
@@ -61,7 +65,7 @@ def get_user_params():
         return None
 
 
-def main(st_group, resample, divide, induce):
+def main(resample, retrain, use_cpu, divide, induce):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
@@ -69,10 +73,10 @@ def main(st_group, resample, divide, induce):
     divide_model = DivideLearning()
 
     if divide:
-        divide_model.divide(data_path, dataset_name, st_group=st_group, resample=resample)
+        divide_model.divide(data_path, dataset_name, resample=resample)
 
     if induce:
-        divide_model.induce(data_path, dataset_name)
+        divide_model.induce(data_path, dataset_name, retrain=retrain, use_cpu=use_cpu)
 
 
 if __name__ == '__main__':
@@ -80,8 +84,9 @@ if __name__ == '__main__':
     user_params = get_user_params()
 
     if user_params is not None:
-        main(st_group=user_params['st_group'],
-             resample=user_params['resample'],
+        main(resample=user_params['resample'],
+             retrain=user_params['retrain'],
+             use_cpu=user_params['use_cpu'],
              divide=user_params['divide'],
              induce=user_params['induce'])
     else:

@@ -1,15 +1,28 @@
+import os
+import torch
+import torch.nn as nn
+import torch.nn.init as init
+import torch.optim as optim
+import torch.optim.lr_scheduler as lr_scheduler
+import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+
 from scipy import ndimage, stats
 import numpy as np
+from torch.utils.data import DataLoader
 
 from src.DL.Database import Database
-from src.DL.ResNet import resnet
+from src.DL.BlockDataset import BlockDataset
+from src.DL.ResNet import create_resnet
 import src.utils as utils
+from src.Logger import Logger
 
 
 class DivideLearning:
 
     def __init__(self):
         self._database = Database()
+        self._block_dataset = BlockDataset()
 
         self._divisor = 2
         self._divide_level_limit = 3
@@ -30,9 +43,11 @@ class DivideLearning:
         self._block_attr = np.zeros((self._block_num, self._attr_num))
         self._block_data = np.zeros(np.hstack((self._leaf_block_num, self._block_shape[-1])))
         self._block_am = np.zeros(np.hstack((self._leaf_block_num, self._block_shape[-1])))
-        self._significant_block_num = 50
 
-    def divide(self, data_path, dataset_name, st_group=None, resample=False):
+        self._max_epoches = 1000
+        self._batch_size = 32
+
+    def divide(self, data_path, dataset_name, resample=False):
 
         self._database.load_database(data_path, dataset_name, mode='training', resample=resample)
 
@@ -150,24 +165,90 @@ class DivideLearning:
 
                     self._divide_block(sub_block_id, sub_data, sub_am)
 
-    def induce(self, data_path, dataset_name):
+    def induce(self, data_path, dataset_name, retrain, use_cpu):
 
         print('Inductive Learning. Dataset {0}.'.format(dataset_name))
 
         self._database.load_database(data_path, dataset_name, mode='training')
-        block_path = 'experiments/'
+        exper_path = 'experiments/'
 
-        block_attr = np.load(block_path + 'block_attr.npy')
-        block_data = np.load(block_path + 'block_data.npy')
-        block_am = np.load(block_path + 'block_am.npy')
+        # block_attr = np.load(exper_path + 'block_attr.npy')
+        block_data = np.load(exper_path + 'block_data.npy')
+        # block_am = np.load(exper_path + 'block_am.npy')
 
-        res_net = resnet()
-        res_net.divide()
-        res_net.cuda()
-
+        object_num = block_data.shape[0]
+        object_ages = np.zeros(object_num)
         while self._database.has_next_data():
 
             index = self._database.get_data_index()
+            data_name, data, age = self._database.get_next_data(required_data=False)
+            object_ages[index] = age
+
+        self._block_dataset.init_dataset(block_data, object_ages)
+
+        if use_cpu:
+            num_workers = 0
+            pin_memory = False
+        else:
+            num_workers = 2
+            pin_memory = True
+        data_loader = DataLoader(self._block_dataset,
+                                 batch_size=self._batch_size,
+                                 shuffle=True,
+                                 num_workers=num_workers,
+                                 pin_memory=pin_memory)
+
+        if retrain is False and os.path.exists(exper_path + 'resnet.pkl'):
+            print('Construct ResNet. Load from pkl file.')
+            resnet = torch.load(exper_path + 'resnet.pkl')
+        else:
+            print('Construct ResNet. Create a new network.')
+            resnet = create_resnet()
+
+        resnet.float()
+        resnet.train()
+        if use_cpu is False:
+            cudnn.enabled = True
+            resnet.cuda()
+        else:
+            cudnn.enabled = False
+
+        criterion = nn.MSELoss()
+        optimizer = optim.RMSprop(resnet.parameters(), lr=1e-4, alpha=0.9)
+        # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=100000, gamma=0.5)
+
+        logger = Logger('train', 'train.log')
+
+        for epoch in range(self._max_epoches):
+
+            running_loss = 0
+
+            for batch_id, sample in enumerate(data_loader):
+
+                if use_cpu is False:
+                    data, age = sample['data'].cuda(), sample['age'].cuda()
+                else:
+                    data, age = sample['data'], sample['age']
+
+                data, age = Variable(data), Variable(age)
+
+                predicted_age = resnet(data)
+
+                loss = criterion(predicted_age, age)
+                optimizer.zero_grad()
+                loss.backward()
+                scheduler.step()
+                optimizer.step()
+
+                running_loss += loss.data[0]
+
+                message = 'Epoch: %d, Batch: %d, Loss: %.3f, Epoch Loss: %.3f' % \
+                          (epoch, batch_id, loss.data[0], running_loss / (batch_id+1))
+                print(message)
+                logger.log(message)
+
+            torch.save(resnet, exper_path + 'resnet.pkl')
 
 
     def test(self, data_path, dataset_name, mode):
