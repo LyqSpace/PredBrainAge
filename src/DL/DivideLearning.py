@@ -326,8 +326,8 @@ class DivideLearning:
                 index, test_age, predicted_age, error, loss / (index + 1), MAE / (index + 1)
             ))
 
-            if index > 0:
-                break
+            # if index > 0:
+            #     break
 
         MAE /= data_num
 
