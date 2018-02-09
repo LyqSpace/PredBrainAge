@@ -58,12 +58,16 @@ class DivideLearning:
         block_data = np.zeros(((data_num,) + self._block_data.shape))
         block_am = np.zeros(((data_num,) + self._block_am.shape))
 
+        logger = Logger('divide', 'divide.log')
+
         while self._database.has_next_data():
 
             index = self._database.get_data_index()
             data_name, data, age = self._database.get_next_data()
 
             print(index, data_name, age)
+            message = 'Index: %d, Name %s, Age: %d' % (index, data_name, age)
+            logger.log(message)
 
             am = utils.get_attention_map(data)
             self._divide_block(0, data, am)
