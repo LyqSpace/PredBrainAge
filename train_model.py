@@ -30,15 +30,22 @@ def get_user_params():
                         default=False,
                         help='Divide process.')
         opts.add_option('--induce',
-                        action="store_true",
+                        action='store_true',
                         dest='induce',
                         default=False,
                         help='Induce process.')
+        opts.add_option('--st_epoch',
+                        action='store',
+                        type='int',
+                        default=0,
+                        dest='st_epoch',
+                        help='Input the start epoch and load net from the file.')
 
         options, args = opts.parse_args()
         resample = options.resample
         retrain = options.retrain
         use_cpu = options.cpu
+        st_epoch = options.st_epoch
         divide = options.divide
         induce = options.induce
 
@@ -49,6 +56,7 @@ def get_user_params():
             user_params = {
                 'resample': resample,
                 'retrain': retrain,
+                'st_epoch': st_epoch,
                 'use_cpu': use_cpu,
                 'divide': divide,
                 'induce': induce
@@ -65,7 +73,7 @@ def get_user_params():
         return None
 
 
-def main(resample, retrain, use_cpu, divide, induce):
+def main(resample, retrain, use_cpu, divide, induce, st_epoch):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
@@ -76,7 +84,7 @@ def main(resample, retrain, use_cpu, divide, induce):
         divide_model.divide(data_path, dataset_name, resample=resample)
 
     if induce:
-        divide_model.induce(data_path, dataset_name, retrain=retrain, use_cpu=use_cpu)
+        divide_model.induce(data_path, dataset_name, retrain=retrain, use_cpu=use_cpu, st_epoch=st_epoch)
 
 
 if __name__ == '__main__':
@@ -88,6 +96,7 @@ if __name__ == '__main__':
              retrain=user_params['retrain'],
              use_cpu=user_params['use_cpu'],
              divide=user_params['divide'],
+             st_epoch=user_params['st_epoch'],
              induce=user_params['induce'])
     else:
         raise Exception('User params are wrong.')

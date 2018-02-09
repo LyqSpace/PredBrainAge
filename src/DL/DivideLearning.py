@@ -169,7 +169,7 @@ class DivideLearning:
 
                     self._divide_block(sub_block_id, sub_data, sub_am)
 
-    def induce(self, data_path, dataset_name, retrain, use_cpu):
+    def induce(self, data_path, dataset_name, retrain, use_cpu, st_epoch=0):
 
         print('Inductive Learning. Dataset {0}.'.format(dataset_name))
 
@@ -202,12 +202,17 @@ class DivideLearning:
                                  num_workers=num_workers,
                                  pin_memory=pin_memory)
 
-        if retrain is False and os.path.exists(exper_path + 'resnet.pkl'):
-            print('Construct ResNet. Load from pkl file.')
-            resnet = torch.load(exper_path + 'resnet.pkl')
-        else:
+        if (st_epoch-1) < 0 or retrain:
             print('Construct ResNet. Create a new network.')
             resnet = create_resnet()
+        else:
+            resnet_file_name = 'resnet_%d.pkl' % (st_epoch-1)
+            if os.path.exists(exper_path + resnet_file_name):
+                print('Construct ResNet. Load from pkl file.')
+                resnet = torch.load(exper_path + resnet_file_name)
+            else:
+                print('Construct ResNet. Create a new network.')
+                resnet = create_resnet()
 
         resnet.float()
         resnet.train()
@@ -224,7 +229,7 @@ class DivideLearning:
 
         logger = Logger('train', 'train.log')
 
-        for epoch in range(self._max_epoches):
+        for epoch in range(st_epoch, self._max_epoches):
 
             running_loss = 0
 
@@ -256,7 +261,7 @@ class DivideLearning:
                 print(comp_res)
                 logger.log(comp_res)
 
-            torch.save(resnet, exper_path + 'resnet.pkl')
+            torch.save(resnet, exper_path + 'resnet_%d.pkl' % epoch)
 
     def test(self, data_path, dataset_name, mode, use_cpu):
 
