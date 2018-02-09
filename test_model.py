@@ -14,9 +14,22 @@ def get_user_params():
                         dest='validate',
                         default=False,
                         help='Validate the model.')
+        opts.add_option('--model_epoch',
+                        action='store',
+                        type='int',
+                        default=0,
+                        dest='model_epoch',
+                        help='Input the model epoch to load the model to validate.')
+        opts.add_option('--cpu',
+                        action='store_true',
+                        dest='cpu',
+                        default=False,
+                        help='Test the model by cpu.')
 
         options, args = opts.parse_args()
         validate = options.validate
+        model_epoch = options.model_epoch
+        use_cpu = options.cpu
 
         err_messages = []
         check_opts = True
@@ -24,6 +37,8 @@ def get_user_params():
         if check_opts:
             user_params = {
                 'validate': validate,
+                'model_epoch': model_epoch,
+                'use_cpu': use_cpu
             }
             return user_params
         else:
@@ -37,7 +52,7 @@ def get_user_params():
         return None
 
 
-def main(validate):
+def main(validate, use_cpu, model_epoch):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
@@ -45,9 +60,9 @@ def main(validate):
     divide_model = DivideLearning()
 
     if validate:
-        divide_model.test(data_path, dataset_name, mode='validation')
+        divide_model.test(data_path, dataset_name, model_epoch=model_epoch, use_cpu=use_cpu, mode='validation')
     else:
-        divide_model.test(data_path, dataset_name, mode='test')
+        divide_model.test(data_path, dataset_name, model_epoch=model_epoch, use_cpu=use_cpu, mode='test')
 
 
 if __name__ == '__main__':
@@ -55,6 +70,8 @@ if __name__ == '__main__':
     user_params = get_user_params()
 
     if user_params is not None:
-        main(validate=user_params['validate'])
+        main(validate=user_params['validate'],
+             model_epoch=user_params['model_epoch'],
+             use_cpu=user_params['use_cpu'])
     else:
         raise Exception('User params are wrong.')

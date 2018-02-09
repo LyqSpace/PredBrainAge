@@ -46,6 +46,9 @@ class DivideLearning:
 
         self._max_epoches = 1000
         self._batch_size = 32
+        self._lr0 = 1e-2
+        self._lr_shirnk_step = 50000
+        self._lr_shrink_gamma = 0.5
 
     def divide(self, data_path, dataset_name, resample=False):
 
@@ -181,6 +184,7 @@ class DivideLearning:
         # block_am = np.load(exper_path + 'block_am.npy')
 
         object_num = block_data.shape[0]
+        block_num = object_num * block_data.shape[1]
         object_ages = np.zeros(object_num)
         while self._database.has_next_data():
 
@@ -222,10 +226,13 @@ class DivideLearning:
         else:
             cudnn.enabled = False
 
+        epoch_step = self._lr_shirnk_step * self._batch_size / block_num
+        lr = self._lr0 * self._lr_shrink_gamma ** (st_epoch // epoch_step)
+
         criterion = nn.MSELoss()
-        optimizer = optim.RMSprop(resnet.parameters(), lr=1e-2, alpha=0.9)
+        optimizer = optim.RMSprop(resnet.parameters(), lr=lr, alpha=0.9)
         # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
-        scheduler = lr_scheduler.StepLR(optimizer, step_size=100000, gamma=0.5)
+        scheduler = lr_scheduler.StepLR(optimizer, step_size=self._lr_shirnk_step, gamma=self._lr_shrink_gamma)
 
         logger = Logger('train', 'train.log')
 
@@ -263,16 +270,19 @@ class DivideLearning:
 
             torch.save(resnet, exper_path + 'resnet_%d.pkl' % epoch)
 
-    def test(self, data_path, dataset_name, mode, use_cpu):
+    def test(self, data_path, dataset_name, model_epoch, mode, use_cpu):
 
         print('Test model. Dataset {0}. Mode {1}'.format(dataset_name, mode))
 
         self._database.load_database(data_path, dataset_name, mode=mode)
         exper_path = 'experiments/'
 
-        print('Construct ResNet. Load from pkl file.')
-        # resnet = torch.load(exper_path + 'resnet.pkl')
-        resnet = create_resnet()
+        resnet_file_name = 'resnet_%d.pkl' % (model_epoch)
+        if os.path.exists(exper_path + resnet_file_name):
+            print('Construct ResNet. Load from pkl file.')
+            resnet = torch.load(exper_path + resnet_file_name)
+        else:
+            raise Exception('No such model file.')
 
         resnet.float()
         resnet.eval()
@@ -281,8 +291,10 @@ class DivideLearning:
             resnet.cuda()
         else:
             cudnn.enabled = False
+            resnet.cpu()
 
-        MSE = 0
+        MAE = 0
+        loss = 0
         test_result_list = []
         data_num = self._database.get_data_size()
 
@@ -294,22 +306,35 @@ class DivideLearning:
 
             self._divide_block(0, test_data, test_am)
 
-            data = torch.from_numpy(self._block_data).unsequence(dim=1).float()
+            data = torch.from_numpy(self._block_data).unsqueeze(dim=1).float()
+            if use_cpu is False:
+                data = data.cuda()
+            data = Variable(data)
+
             predicted_age = resnet(data)
 
-            predicted_age = predicted_age.data.cpu().numpy()[0][0]
+            predicted_age = predicted_age.data.cpu().numpy()
 
+            loss += ((predicted_age - test_age) ** 2).mean()
+            predicted_age = predicted_age.mean()
             error = abs(predicted_age - test_age)
-            MSE += error
+            MAE += error
 
             test_result_list.append((test_age, predicted_age, error))
 
-        MSE /= data_num
+            print('Id: %d, Test Age: %d, Pred Age: %d, Err: %d, Loss %.3f, MAE: %.3f' % (
+                index, test_age, predicted_age, error, loss / (index + 1), MAE / (index + 1)
+            ))
+
+            if index > 0:
+                break
+
+        MAE /= data_num
 
         test_result_list.sort(key=lambda data: data[2])
         CI_75 = test_result_list[int(0.75 * data_num)][2]
         CI_95 = test_result_list[int(0.95 * data_num)][2]
 
-        print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MSE, CI_75, CI_95))
+        print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MAE, CI_75, CI_95))
 
         utils.plot_scatter(test_result_list, CI_75, CI_95, exper_path)
