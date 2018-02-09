@@ -223,7 +223,7 @@ class DivideLearning:
             cudnn.enabled = False
 
         criterion = nn.MSELoss()
-        optimizer = optim.RMSprop(resnet.parameters(), lr=1e-4, alpha=0.9)
+        optimizer = optim.RMSprop(resnet.parameters(), lr=1e-2, alpha=0.9)
         # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=100000, gamma=0.5)
 
