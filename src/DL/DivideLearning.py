@@ -298,6 +298,9 @@ class DivideLearning:
         test_result_list = []
         data_num = self._database.get_data_size()
 
+        fa_index = np.array(range(64)) // 8
+        test_res = []
+
         while self._database.has_next_data():
 
             index = self._database.get_data_index()
@@ -314,7 +317,9 @@ class DivideLearning:
             predicted_age = resnet(data)
 
             predicted_age = predicted_age.data.cpu().numpy()
-            print(predicted_age)
+            comp = np.c_[predicted_age, predicted_age - test_age, fa_index]
+            test_res.append(comp)
+            print(comp)
 
             loss += ((predicted_age - test_age) ** 2).mean()
             predicted_age = predicted_age.mean()
@@ -330,11 +335,16 @@ class DivideLearning:
             # if index > 0:
             #     break
 
+        np.save(exper_path + 'test_res.npy', np.array(test_res))
+
         MAE /= data_num
 
         test_result_list.sort(key=lambda data: data[2])
         CI_75 = test_result_list[int(0.75 * data_num)][2]
         CI_95 = test_result_list[int(0.95 * data_num)][2]
+
+        # CI_75 = 0
+        # CI_95 = 0
 
         print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MAE, CI_75, CI_95))
 
