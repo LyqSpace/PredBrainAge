@@ -462,6 +462,7 @@ def get_div(template_am, matched_am, show=False):
 def plot_scatter(res_list, interval75, interval95, path):
 
     size = len(res_list)
+    print(res_list)
     for i in range(size):
         plt.scatter(res_list[i][0], res_list[i][1], s=5, c='red')
 

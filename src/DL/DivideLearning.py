@@ -314,6 +314,7 @@ class DivideLearning:
             predicted_age = resnet(data)
 
             predicted_age = predicted_age.data.cpu().numpy()
+            print(predicted_age)
 
             loss += ((predicted_age - test_age) ** 2).mean()
             predicted_age = predicted_age.mean()
