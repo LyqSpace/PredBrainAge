@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from src.DNN.Database import Database
+from src.TwoPathDNN.Database import Database
 
 
 def plot_scatter(res_list, interval75, interval95):

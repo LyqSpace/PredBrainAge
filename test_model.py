@@ -2,7 +2,7 @@ import os
 from optparse import OptionParser
 
 from src.Logger import Logger
-from src.DL.DivideLearning import DivideLearning
+from src.DivideDNN.DivideLearning import DivideLearning
 
 
 def get_user_params():
@@ -66,6 +66,9 @@ def main(validate, use_cpu, model_epoch):
 
 
 if __name__ == '__main__':
+
+    import numpy as np
+    x = np.load('experiments/test_res.npy')
 
     user_params = get_user_params()
 

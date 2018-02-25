@@ -9,7 +9,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from src.Database import Database
 from torch.autograd import Variable
 
-from src.DNN.Net import Net
+from src.TwoPathDNN.Net import Net
 from src.Logger import Logger
 
 

@@ -11,9 +11,9 @@ from scipy import ndimage, stats
 import numpy as np
 from torch.utils.data import DataLoader
 
-from src.DL.Database import Database
-from src.DL.BlockDataset import BlockDataset
-from src.DL.ResNet import create_resnet
+from src.DivideDNN.Database import Database
+from src.DivideDNN.BlockDataset import BlockDataset
+from src.DivideDNN.ResNet import create_resnet
 import src.utils as utils
 from src.Logger import Logger
 

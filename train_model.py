@@ -2,7 +2,8 @@ import os
 from optparse import OptionParser
 
 from src.Logger import Logger
-from src.DL.DivideLearning import DivideLearning
+from src.ClusterDNN.ClusterModel import ClusterModel
+from src.ClusterDNN.BaselineModel import BaselineModel
 
 
 def get_user_params():
@@ -24,16 +25,11 @@ def get_user_params():
                         dest='cpu',
                         default=False,
                         help='Train the model by cpu.')
-        opts.add_option('--divide',
+        opts.add_option('--baseline',
                         action='store_true',
-                        dest='divide',
+                        dest='baseline',
                         default=False,
-                        help='Divide process.')
-        opts.add_option('--induce',
-                        action='store_true',
-                        dest='induce',
-                        default=False,
-                        help='Induce process.')
+                        help='Train the baseline model.')
         opts.add_option('--st_epoch',
                         action='store',
                         type='int',
@@ -45,9 +41,8 @@ def get_user_params():
         resample = options.resample
         retrain = options.retrain
         use_cpu = options.cpu
+        baseline = options.baseline
         st_epoch = options.st_epoch
-        divide = options.divide
-        induce = options.induce
 
         err_messages = []
         check_opts = True
@@ -58,8 +53,7 @@ def get_user_params():
                 'retrain': retrain,
                 'st_epoch': st_epoch,
                 'use_cpu': use_cpu,
-                'divide': divide,
-                'induce': induce
+                'baseline': baseline
             }
             return user_params
         else:
@@ -73,18 +67,17 @@ def get_user_params():
         return None
 
 
-def main(resample, retrain, use_cpu, divide, induce, st_epoch):
+def main(resample, retrain, use_cpu, baseline, st_epoch):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
 
-    divide_model = DivideLearning()
+    if baseline:
+        model = BaselineModel(data_path, dataset_name, resample=resample)
+    else:
+        model = ClusterModel(data_path, dataset_name, resample=resample)
 
-    if divide:
-        divide_model.divide(data_path, dataset_name, resample=resample)
-
-    if induce:
-        divide_model.induce(data_path, dataset_name, retrain=retrain, use_cpu=use_cpu, st_epoch=st_epoch)
+    model.train(data_path, retrain=retrain, use_cpu=use_cpu, st_epoch=st_epoch)
 
 
 if __name__ == '__main__':
@@ -95,8 +88,7 @@ if __name__ == '__main__':
         main(resample=user_params['resample'],
              retrain=user_params['retrain'],
              use_cpu=user_params['use_cpu'],
-             divide=user_params['divide'],
-             st_epoch=user_params['st_epoch'],
-             induce=user_params['induce'])
+             baseline = user_params['baseline'],
+             st_epoch=user_params['st_epoch'])
     else:
         raise Exception('User params are wrong.')

@@ -5,6 +5,7 @@ data/IXI-T1-raw-npy/
 data/IXI-T1-small-npy/
 data/IXI-T1-raw-niigz/
 data/*.csv
+data/*.npy
 experiments/
 
 *.pyc
