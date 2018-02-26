@@ -76,9 +76,6 @@ def main(validate, use_cpu, baseline, model_epoch):
 
 if __name__ == '__main__':
 
-    import numpy as np
-    x = np.load('experiments/test_res.npy')
-
     user_params = get_user_params()
 
     if user_params is not None:

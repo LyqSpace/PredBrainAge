@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from scipy import ndimage, optimize
@@ -459,7 +461,7 @@ def get_div(template_am, matched_am, show=False):
     return div
 
 
-def plot_scatter(res_list, interval75, interval95, path):
+def plot_scatter(res_list, interval75, interval95, path, name_suffix):
 
     size = len(res_list)
     for i in range(size):
@@ -481,7 +483,7 @@ def plot_scatter(res_list, interval75, interval95, path):
     y = x - interval95
     plt.plot(x, y, color='blue', linewidth=1, linestyle='--')
 
-    plt.title('Predict Brain Age Results')
+    plt.title('Predict Brain Age Results ' + name_suffix)
     plt.xlim(10, 90)
     plt.ylim(10, 90)
     plt.xlabel('Real Age')
@@ -489,10 +491,9 @@ def plot_scatter(res_list, interval75, interval95, path):
     plt.legend()
     plt.grid(True)
 
-    plt.savefig(path + 'PredictResults.png')
+    plt.savefig(path + 'pred_brain_age_' + name_suffix + '.jpg')
 
-    print("PredictResults.png saved.")
-
+    print('pred_brain_age_' + name_suffix + '.jpg', 'saved.')
 
 
 if __name__ == '__main__':

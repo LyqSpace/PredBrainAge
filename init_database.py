@@ -73,19 +73,19 @@ def main(resample):
     np.save(data_path + 'validation_data.npy', np.array(validation_data))
     np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
 
-    # Validation
-    database.load_database(data_path, dataset_name, mode='validation')
+    # Test
+    database.load_database(data_path, dataset_name, mode='test')
 
-    validation_data = []
-    validation_ages = []
+    test_data = []
+    test_ages = []
 
     while database.has_next_data():
         data_name, data, age = database.get_next_data(required_data=True)
-        validation_data.append(data)
-        validation_ages.append(age)
+        test_data.append(data)
+        test_ages.append(age)
 
-    np.save(data_path + 'validation_data.npy', np.array(validation_data))
-    np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
+    np.save(data_path + 'test_data.npy', np.array(test_data))
+    np.save(data_path + 'test_ages.npy', np.array(test_ages))
 
 
 if __name__ == '__main__':

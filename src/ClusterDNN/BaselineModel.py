@@ -9,7 +9,6 @@ from torch.autograd import Variable
 import numpy as np
 from torch.utils.data import DataLoader
 
-from src.ClusterDNN.Database import Database
 from src.ClusterDNN.BatchSet import BatchSet
 from src.ClusterDNN.BaselineNet import create_baseline_net
 import src.utils as utils
@@ -107,7 +106,7 @@ class BaselineModel:
                 print(message)
                 logger.log(message)
 
-                comp_res = np.c_[predicted_age.data.cpu().numpy(), age.data.cpu().numpy()[:, :, 0]]
+                comp_res = np.c_[age.data.cpu().numpy()[:, :, 0], predicted_age.data.cpu().numpy()]
                 print(comp_res)
                 logger.log(comp_res)
 
@@ -119,6 +118,7 @@ class BaselineModel:
         print('Test model.', data_path, 'Mode:', mode)
 
         expt_path = 'expt/'
+        batch_size = 16
 
         if mode == 'validation':
             test_data = np.load(data_path + 'validation_data.npy')
@@ -126,6 +126,20 @@ class BaselineModel:
         else:
             test_data = np.load(data_path + 'test_data.npy')
             test_ages = np.load(data_path + 'test_ages.npy')
+
+        batch_set = BatchSet(test_data, test_ages)
+
+        if use_cpu:
+            num_workers = 0
+            pin_memory = False
+        else:
+            num_workers = 2
+            pin_memory = True
+        data_loader = DataLoader(dataset=batch_set,
+                                 batch_size=batch_size,
+                                 shuffle=True,
+                                 num_workers=num_workers,
+                                 pin_memory=pin_memory)
 
         baseline_net_file_name = 'baseline_net_%d.pkl' % (model_epoch)
         if os.path.exists(expt_path + baseline_net_file_name):
@@ -143,29 +157,36 @@ class BaselineModel:
             cudnn.enabled = False
             baseline_net.cpu()
 
-        data = torch.from_numpy(test_data).unsqueeze(dim=1).float()
-        if use_cpu is False:
-            data = data.cuda()
-        data = Variable(data)
+        test_res = None
 
-        predicted_age = baseline_net(data)
+        for batch_id, sample in enumerate(data_loader):
 
-        predicted_age = predicted_age.data.cpu().numpy()
+            data = sample['data'].unsqueeze(dim=1).float()
+            age = sample['age'].float().numpy()
 
-        error = predicted_age - test_ages
-        MAE = abs(error).mean()
+            if use_cpu is False:
+                data = data.cuda()
 
+            data = Variable(data)
+
+            predicted_age = baseline_net(data)
+
+            predicted_age = predicted_age.data.cpu().numpy()
+            batch_res = np.c_[age, predicted_age, predicted_age - age]
+
+            if test_res is None:
+                test_res = batch_res
+            else:
+                test_res = np.r_[test_res, batch_res]
+
+        test_res = test_res[test_res[:,0].argsort()]
         np.save(expt_path + 'baseline_test_result.npy', np.array(test_res))
 
-        MAE /= data_num
+        abs_error = abs(test_res[:,2])
+        MAE = abs_error.mean()
+        CI_75 = np.percentile(abs_error, 75)
+        CI_95 = np.percentile(abs_error, 95)
 
-        test_result_list.sort(key=lambda data: data[2])
-        CI_75 = test_result_list[int(0.75 * data_num)][2]
-        CI_95 = test_result_list[int(0.95 * data_num)][2]
+        print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f. ' % (test_res.shape[0], MAE, CI_75, CI_95))
 
-        # CI_75 = 0
-        # CI_95 = 0
-
-        print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MAE, CI_75, CI_95))
-
-        utils.plot_scatter(test_result_list, CI_75, CI_95, expt_path)
+        utils.plot_scatter(test_res, CI_75, CI_95, expt_path, 'baseline_' + str(model_epoch))
