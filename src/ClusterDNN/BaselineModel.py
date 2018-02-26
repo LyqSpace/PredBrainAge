@@ -181,6 +181,7 @@ class BaselineModel:
 
         test_res = test_res[test_res[:,0].argsort()]
         np.save(expt_path + 'baseline_test_result.npy', np.array(test_res))
+        print(test_res)
 
         abs_error = abs(test_res[:,2])
         MAE = abs_error.mean()
@@ -189,4 +190,4 @@ class BaselineModel:
 
         print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f. ' % (test_res.shape[0], MAE, CI_75, CI_95))
 
-        utils.plot_scatter(test_res, CI_75, CI_95, expt_path, 'baseline_' + str(model_epoch))
+        utils.plot_scatter(test_res, CI_75, CI_95, expt_path, mode + '_baseline_' + str(model_epoch))
