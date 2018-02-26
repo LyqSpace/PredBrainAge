@@ -26,6 +26,8 @@ class BaselineModel:
             return
 
         database = Database()
+
+        # Training
         database.load_database(data_path, dataset_name, mode='training', resample=resample)
 
         training_data = []
@@ -39,7 +41,36 @@ class BaselineModel:
         np.save(data_path + 'training_data.npy', np.array(training_data))
         np.save(data_path + 'training_ages.npy', np.array(training_ages))
 
-    def train(self, data_path, retrain, use_cpu, st_epoch=0):
+        # Validation
+        database.load_database(data_path, dataset_name, mode='validation')
+
+        validation_data = []
+        validation_ages = []
+
+        while database.has_next_data():
+            data_name, data, age = database.get_next_data(required_data=True)
+            validation_data.append(data)
+            validation_ages.append(age)
+
+        np.save(data_path + 'validation_data.npy', np.array(validation_data))
+        np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
+
+        # Validation
+        database.load_database(data_path, dataset_name, mode='validation')
+
+        validation_data = []
+        validation_ages = []
+
+        while database.has_next_data():
+            data_name, data, age = database.get_next_data(required_data=True)
+            validation_data.append(data)
+            validation_ages.append(age)
+
+        np.save(data_path + 'validation_data.npy', np.array(validation_data))
+        np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
+
+    @staticmethod
+    def train(data_path, retrain, use_cpu, st_epoch=0):
 
         print('Train Dataset.')
 
@@ -130,17 +161,24 @@ class BaselineModel:
 
             torch.save(baseline_net, expt_path + 'baseline_net_%d.pkl' % epoch)
 
-    def test(self, data_path, dataset_name, model_epoch, mode, use_cpu):
+    @staticmethod
+    def test(data_path, model_epoch, mode, use_cpu):
 
-        print('Test model. Dataset {0}. Mode {1}'.format(dataset_name, mode))
+        print('Test model.', data_path, 'Mode:', mode)
 
-        self._database.load_database(data_path, dataset_name, mode=mode)
-        exper_path = 'experiments/'
+        expt_path = 'expt/'
+
+        if mode == 'validation':
+            test_data = np.load(data_path + 'validation_data.npy')
+            test_ages = np.load(data_path + 'validation_ages.npy')
+        else:
+            test_data = np.load(data_path + 'test_data.npy')
+            test_ages = np.load(data_path + 'test_ages.npy')
 
         baseline_net_file_name = 'baseline_net_%d.pkl' % (model_epoch)
-        if os.path.exists(exper_path + baseline_net_file_name):
+        if os.path.exists(expt_path + baseline_net_file_name):
             print('Construct baseline_net. Load from pkl file.')
-            baseline_net = torch.load(exper_path + baseline_net_file_name)
+            baseline_net = torch.load(expt_path + baseline_net_file_name)
         else:
             raise Exception('No such model file.')
 
@@ -154,22 +192,14 @@ class BaselineModel:
             baseline_net.cpu()
 
         MAE = 0
-        loss = 0
         test_result_list = []
-        data_num = self._database.get_data_size()
+        data_num = test_data.shape[0]
 
-        fa_index = np.array(range(64)) // 8
         test_res = []
 
-        while self._database.has_next_data():
+        for i in range(data_num):
 
-            index = self._database.get_data_index()
-            data_name, test_data, test_age = self._database.get_next_data()
-            test_am = utils.get_attention_map(test_data)
-
-            self._divide_block(0, test_data, test_am)
-
-            data = torch.from_numpy(self._block_data).unsqueeze(dim=1).float()
+            data = torch.from_numpy(test_data[i]).unsqueeze(dim=1).float()
             if use_cpu is False:
                 data = data.cuda()
             data = Variable(data)
@@ -177,25 +207,20 @@ class BaselineModel:
             predicted_age = baseline_net(data)
 
             predicted_age = predicted_age.data.cpu().numpy()
-            comp = np.c_[predicted_age, predicted_age - test_age, fa_index]
-            test_res.append(comp)
-            print(comp)
 
-            loss += ((predicted_age - test_age) ** 2).mean()
-            predicted_age = predicted_age.mean()
-            error = abs(predicted_age - test_age)
+            error = abs(predicted_age - test_ages[i])
             MAE += error
 
-            test_result_list.append((test_age, predicted_age, error))
+            test_result_list.append((test_ages[i], predicted_age, error))
 
-            print('Id: %d, Test Age: %d, Pred Age: %d, Err: %d, Loss %.3f, MAE: %.3f' % (
-                index, test_age, predicted_age, error, loss / (index + 1), MAE / (index + 1)
+            print('Id: %d, Test Age: %d, Pred Age: %d, Err: %d, MAE: %.3f' % (
+                i, test_ages[i], predicted_age, error, MAE / (i + 1)
             ))
 
             # if index > 0:
             #     break
 
-        np.save(exper_path + 'test_res.npy', np.array(test_res))
+        np.save(expt_path + 'baseline_test_result.npy', np.array(test_res))
 
         MAE /= data_num
 
@@ -208,4 +233,4 @@ class BaselineModel:
 
         print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f, ' % (data_num, MAE, CI_75, CI_95))
 
-        utils.plot_scatter(test_result_list, CI_75, CI_95, exper_path)
+        utils.plot_scatter(test_result_list, CI_75, CI_95, expt_path)
