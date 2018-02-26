@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import math
-from torchvision.models.resnet import resnet18
 
 
 class BasicBlock(nn.Module):
@@ -51,9 +50,7 @@ class ClusterNet(nn.Module):
         self.layer1 = self._make_layer(block, 16, layers[0])
         self.layer2 = self._make_layer(block, 32, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 64, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 128, layers[2], stride=2)
-        self.avg_pool = nn.AvgPool3d(kernel_size=(3,4,3))
-        self.fc = nn.Linear(128 * block.expansion, 1)
+        self.avg_pool = nn.AvgPool3d(kernel_size=(6,7,6))
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -88,11 +85,9 @@ class ClusterNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.layer4(x)
 
         x = self.avg_pool(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
 
         return x
 
