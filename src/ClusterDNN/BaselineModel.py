@@ -18,6 +18,7 @@ from src.Logger import Logger
 class BaselineModel:
 
     def __init__(self):
+        np.set_printoptions(precision=3)
         pass
 
     @staticmethod
