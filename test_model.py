@@ -1,8 +1,8 @@
 import os
 from optparse import OptionParser
 
-from src.Logger import Logger
-from src.DivideDNN.DivideLearning import DivideLearning
+from src.ClusterDNN.BaselineModel import BaselineModel
+from src.ClusterDNN.ClusterModel import ClusterModel
 
 
 def get_user_params():
@@ -20,6 +20,11 @@ def get_user_params():
                         default=0,
                         dest='model_epoch',
                         help='Input the model epoch to load the model to validate.')
+        opts.add_option('--baseline',
+                        action='store_true',
+                        dest='baseline',
+                        default=False,
+                        help='Train the baseline model.')
         opts.add_option('--cpu',
                         action='store_true',
                         dest='cpu',
@@ -29,6 +34,7 @@ def get_user_params():
         options, args = opts.parse_args()
         validate = options.validate
         model_epoch = options.model_epoch
+        baseline = options.baseline
         use_cpu = options.cpu
 
         err_messages = []
@@ -38,6 +44,7 @@ def get_user_params():
             user_params = {
                 'validate': validate,
                 'model_epoch': model_epoch,
+                'baseline': baseline,
                 'use_cpu': use_cpu
             }
             return user_params
@@ -52,17 +59,19 @@ def get_user_params():
         return None
 
 
-def main(validate, use_cpu, model_epoch):
+def main(validate, use_cpu, baseline, model_epoch):
 
     data_path = 'data/'
-    dataset_name = 'IXI-T1'
 
-    divide_model = DivideLearning()
+    if baseline:
+        model = BaselineModel()
+    else:
+        model = ClusterModel()
 
     if validate:
-        divide_model.test(data_path, dataset_name, model_epoch=model_epoch, use_cpu=use_cpu, mode='validation')
+        model.test(data_path, model_epoch=model_epoch, use_cpu=use_cpu, mode='validation')
     else:
-        divide_model.test(data_path, dataset_name, model_epoch=model_epoch, use_cpu=use_cpu, mode='test')
+        model.test(data_path, model_epoch=model_epoch, use_cpu=use_cpu, mode='test')
 
 
 if __name__ == '__main__':
@@ -75,6 +84,7 @@ if __name__ == '__main__':
     if user_params is not None:
         main(validate=user_params['validate'],
              model_epoch=user_params['model_epoch'],
+             baseline=user_params['baseline'],
              use_cpu=user_params['use_cpu'])
     else:
         raise Exception('User params are wrong.')

@@ -18,56 +18,8 @@ from src.Logger import Logger
 
 class BaselineModel:
 
-    def __init__(self, data_path, dataset_name, resample, ):
-
-        print('Initialize database.', data_path, dataset_name, 'Resample:', resample)
-
-        if not resample:
-            return
-
-        database = Database()
-
-        # Training
-        database.load_database(data_path, dataset_name, mode='training', resample=resample)
-
-        training_data = []
-        training_ages = []
-
-        while database.has_next_data():
-            data_name, data, age = database.get_next_data(required_data=True)
-            training_data.append(data)
-            training_ages.append(age)
-
-        np.save(data_path + 'training_data.npy', np.array(training_data))
-        np.save(data_path + 'training_ages.npy', np.array(training_ages))
-
-        # Validation
-        database.load_database(data_path, dataset_name, mode='validation')
-
-        validation_data = []
-        validation_ages = []
-
-        while database.has_next_data():
-            data_name, data, age = database.get_next_data(required_data=True)
-            validation_data.append(data)
-            validation_ages.append(age)
-
-        np.save(data_path + 'validation_data.npy', np.array(validation_data))
-        np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
-
-        # Validation
-        database.load_database(data_path, dataset_name, mode='validation')
-
-        validation_data = []
-        validation_ages = []
-
-        while database.has_next_data():
-            data_name, data, age = database.get_next_data(required_data=True)
-            validation_data.append(data)
-            validation_ages.append(age)
-
-        np.save(data_path + 'validation_data.npy', np.array(validation_data))
-        np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
+    def __init__(self):
+        pass
 
     @staticmethod
     def train(data_path, retrain, use_cpu, st_epoch=0):
@@ -191,34 +143,17 @@ class BaselineModel:
             cudnn.enabled = False
             baseline_net.cpu()
 
-        MAE = 0
-        test_result_list = []
-        data_num = test_data.shape[0]
+        data = torch.from_numpy(test_data).unsqueeze(dim=1).float()
+        if use_cpu is False:
+            data = data.cuda()
+        data = Variable(data)
 
-        test_res = []
+        predicted_age = baseline_net(data)
 
-        for i in range(data_num):
+        predicted_age = predicted_age.data.cpu().numpy()
 
-            data = torch.from_numpy(test_data[i]).unsqueeze(dim=1).float()
-            if use_cpu is False:
-                data = data.cuda()
-            data = Variable(data)
-
-            predicted_age = baseline_net(data)
-
-            predicted_age = predicted_age.data.cpu().numpy()
-
-            error = abs(predicted_age - test_ages[i])
-            MAE += error
-
-            test_result_list.append((test_ages[i], predicted_age, error))
-
-            print('Id: %d, Test Age: %d, Pred Age: %d, Err: %d, MAE: %.3f' % (
-                i, test_ages[i], predicted_age, error, MAE / (i + 1)
-            ))
-
-            # if index > 0:
-            #     break
+        error = predicted_age - test_ages
+        MAE = abs(error).mean()
 
         np.save(expt_path + 'baseline_test_result.npy', np.array(test_res))
 

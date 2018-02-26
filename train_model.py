@@ -10,11 +10,6 @@ def get_user_params():
 
     try:
         opts = OptionParser()
-        opts.add_option('--resample',
-                        action='store_true',
-                        dest='resample',
-                        default=False,
-                        help='Resample the data.')
         opts.add_option('--retrain',
                         action='store_true',
                         dest='retrain',
@@ -38,7 +33,6 @@ def get_user_params():
                         help='Input the start epoch and load net from the file.')
 
         options, args = opts.parse_args()
-        resample = options.resample
         retrain = options.retrain
         use_cpu = options.cpu
         baseline = options.baseline
@@ -49,7 +43,6 @@ def get_user_params():
 
         if check_opts:
             user_params = {
-                'resample': resample,
                 'retrain': retrain,
                 'st_epoch': st_epoch,
                 'use_cpu': use_cpu,
@@ -67,15 +60,15 @@ def get_user_params():
         return None
 
 
-def main(resample, retrain, use_cpu, baseline, st_epoch):
+def main(retrain, use_cpu, baseline, st_epoch):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
 
     if baseline:
-        model = BaselineModel(data_path, dataset_name, resample=resample)
+        model = BaselineModel()
     else:
-        model = ClusterModel(data_path, dataset_name, resample=resample)
+        model = ClusterModel()
 
     model.train(data_path, retrain=retrain, use_cpu=use_cpu, st_epoch=st_epoch)
 
@@ -85,8 +78,7 @@ if __name__ == '__main__':
     user_params = get_user_params()
 
     if user_params is not None:
-        main(resample=user_params['resample'],
-             retrain=user_params['retrain'],
+        main(retrain=user_params['retrain'],
              use_cpu=user_params['use_cpu'],
              baseline = user_params['baseline'],
              st_epoch=user_params['st_epoch'])
