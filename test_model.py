@@ -73,7 +73,7 @@ def main(validate, use_cpu, baseline, model_epoch):
     else:
         model = ClusterModel(data_path, mode=mode, use_cpu=use_cpu)
 
-    model.test(data_path, model_epoch=model_epoch)
+    model.test(model_epoch=model_epoch)
 
 
 if __name__ == '__main__':
