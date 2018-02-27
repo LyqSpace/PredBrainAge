@@ -63,15 +63,17 @@ def main(validate, use_cpu, baseline, model_epoch):
 
     data_path = 'data/'
 
-    if baseline:
-        model = BaselineModel()
-    else:
-        model = ClusterModel()
-
     if validate:
-        model.test(data_path, model_epoch=model_epoch, use_cpu=use_cpu, mode='validation')
+        mode = 'validation'
     else:
-        model.test(data_path, model_epoch=model_epoch, use_cpu=use_cpu, mode='test')
+        mode = 'test'
+
+    if baseline:
+        model = BaselineModel(data_path, mode=mode, use_cpu=use_cpu)
+    else:
+        model = ClusterModel(data_path, mode=mode, use_cpu=use_cpu)
+
+    model.test(data_path, model_epoch=model_epoch)
 
 
 if __name__ == '__main__':

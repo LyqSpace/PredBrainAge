@@ -135,7 +135,7 @@ class BaselineModel:
 
         print('Test model.', 'Mode:', self._mode)
 
-        baseline_net_file_name = 'baseline_net_%d.pkl' % (model_epoch)
+        baseline_net_file_name = 'baseline_net_%d.pkl' % model_epoch
         if os.path.exists(self._expt_path + baseline_net_file_name):
             print('Construct baseline_net. Load from pkl file.')
             baseline_net = torch.load(self._expt_path + baseline_net_file_name)
