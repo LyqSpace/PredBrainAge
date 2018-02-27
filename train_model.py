@@ -26,22 +26,28 @@ def get_user_params():
                         default=0,
                         dest='st_epoch',
                         help='Input the start epoch and load net from the file.')
+        opts.add_option('--pretrain_model',
+                        action='store',
+                        type='int',
+                        default=0,
+                        dest='pretrain_model',
+                        help='Input the epoch of baseline model as the pretrain net from the file.')
 
         options, args = opts.parse_args()
-        retrain = options.retrain
         use_cpu = options.cpu
         baseline = options.baseline
         st_epoch = options.st_epoch
+        pretrain_model = options.pretrain_model
 
         err_messages = []
         check_opts = True
 
         if check_opts:
             user_params = {
-                'retrain': retrain,
                 'st_epoch': st_epoch,
                 'use_cpu': use_cpu,
-                'baseline': baseline
+                'baseline': baseline,
+                'pretrain_model': pretrain_model
             }
             return user_params
         else:
@@ -55,7 +61,7 @@ def get_user_params():
         return None
 
 
-def main(use_cpu, baseline, st_epoch):
+def main(use_cpu, baseline, st_epoch, pretrain_model):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
@@ -75,6 +81,7 @@ if __name__ == '__main__':
     if user_params is not None:
         main(use_cpu=user_params['use_cpu'],
              baseline = user_params['baseline'],
-             st_epoch=user_params['st_epoch'])
+             st_epoch=user_params['st_epoch'],
+             pretrain_model = user_params['pretrain_model'])
     else:
         raise Exception('User params are wrong.')
