@@ -10,11 +10,6 @@ def get_user_params():
 
     try:
         opts = OptionParser()
-        opts.add_option('--retrain',
-                        action='store_true',
-                        dest='retrain',
-                        default=False,
-                        help='Retrain the net.')
         opts.add_option('--cpu',
                         action='store_true',
                         dest='cpu',
@@ -60,17 +55,17 @@ def get_user_params():
         return None
 
 
-def main(retrain, use_cpu, baseline, st_epoch):
+def main(use_cpu, baseline, st_epoch):
 
     data_path = 'data/'
     dataset_name = 'IXI-T1'
 
     if baseline:
-        model = BaselineModel()
+        model = BaselineModel(data_path, mode='training', use_cpu=use_cpu)
     else:
-        model = ClusterModel()
+        model = ClusterModel(data_path, mode='training', use_cpu=use_cpu)
 
-    model.train(data_path, retrain=retrain, use_cpu=use_cpu, st_epoch=st_epoch)
+    model.train(st_epoch=st_epoch)
 
 
 if __name__ == '__main__':
@@ -78,8 +73,7 @@ if __name__ == '__main__':
     user_params = get_user_params()
 
     if user_params is not None:
-        main(retrain=user_params['retrain'],
-             use_cpu=user_params['use_cpu'],
+        main(use_cpu=user_params['use_cpu'],
              baseline = user_params['baseline'],
              st_epoch=user_params['st_epoch'])
     else:

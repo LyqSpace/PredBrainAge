@@ -17,26 +17,32 @@ from src.Logger import Logger
 
 class BaselineModel:
 
-    def __init__(self):
+    def __init__(self, data_path, mode, use_cpu):
+
         np.set_printoptions(precision=3, suppress=True)
-        pass
 
-    @staticmethod
-    def train(data_path, retrain, use_cpu, st_epoch=0):
+        self._use_cpu = use_cpu
+        self._mode = mode
+        self._expt_path = 'expt/baseline/'
 
-        print('Train Dataset.')
+        if not os.path.exists('expt/'):
+            os.mkdir('expt/')
+        if not os.path.exists(self._expt_path):
+            os.mkdir(self._expt_path)
 
-        expt_path = 'expt/'
-        max_epoches = 100000
-        batch_size = 16
-        lr0 = 1e-2
-        lr_shirnk_step = 5000
-        lr_shrink_gamma = 0.5
+        if mode == 'training':
+            data = np.load(data_path + 'training_data.npy')
+            ages = np.load(data_path + 'training_ages.npy')
+        elif mode == 'validation':
+            data = np.load(data_path + 'validation_data.npy')
+            ages = np.load(data_path + 'validation_ages.npy')
+        elif mode == 'test':
+            data = np.load(data_path + 'test_data.npy')
+            ages = np.load(data_path + 'test_ages.npy')
+        else:
+            raise Exception('mode must be in [training, validation, test].')
 
-        training_data = np.load(data_path + 'training_data.npy')
-        training_ages = np.load(data_path + 'training_ages.npy')
-
-        batch_set = BatchSet(training_data, training_ages)
+        batch_set = BatchSet(data, ages)
 
         if use_cpu:
             num_workers = 0
@@ -44,27 +50,39 @@ class BaselineModel:
         else:
             num_workers = 2
             pin_memory = True
-        data_loader = DataLoader(dataset=batch_set,
+
+        batch_size = 16
+
+        self._data_loader = DataLoader(dataset=batch_set,
                                  batch_size=batch_size,
                                  shuffle=True,
                                  num_workers=num_workers,
                                  pin_memory=pin_memory)
 
-        if (st_epoch-1) < 0 or retrain:
+    def train(self, st_epoch=0):
+
+        print('Train Dataset.')
+
+        max_epoches = 100000
+        lr0 = 1e-2
+        lr_shirnk_step = 5000
+        lr_shrink_gamma = 0.5
+
+        if st_epoch < 1:
             print('Construct baseline model. Create a new network.')
             baseline_net = create_baseline_net()
         else:
             baseline_net_file_name = 'baseline_net_%d.pkl' % (st_epoch-1)
-            if os.path.exists(expt_path + baseline_net_file_name):
+            if os.path.exists(self._expt_path + baseline_net_file_name):
                 print('Construct baseline model. Load from pkl file.')
-                baseline_net = torch.load(expt_path + baseline_net_file_name)
+                baseline_net = torch.load(self._expt_path + baseline_net_file_name)
             else:
                 print('Construct baseline model. Create a new network.')
                 baseline_net = create_baseline_net()
 
         baseline_net.float()
         baseline_net.train()
-        if use_cpu is False:
+        if self._use_cpu is False:
             cudnn.enabled = True
             baseline_net.cuda()
         else:
@@ -83,11 +101,11 @@ class BaselineModel:
 
             running_loss = 0
 
-            for batch_id, sample in enumerate(data_loader):
+            for batch_id, sample in enumerate(self._data_loader):
 
                 data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].unsqueeze(dim=1).float()
 
-                if use_cpu is False:
+                if self._use_cpu is False:
                     data, age = data.cuda(), age.cuda()
 
                 data, age = Variable(data), Variable(age)
@@ -111,47 +129,22 @@ class BaselineModel:
                 print(comp_res)
                 logger.log(comp_res)
 
-            torch.save(baseline_net, expt_path + 'baseline_net_%d.pkl' % epoch)
+            torch.save(baseline_net, self._expt_path + 'baseline_net_%d.pkl' % epoch)
 
-    @staticmethod
-    def test(data_path, model_epoch, mode, use_cpu):
+    def test(self, model_epoch):
 
-        print('Test model.', data_path, 'Mode:', mode)
-
-        expt_path = 'expt/'
-        batch_size = 16
-
-        if mode == 'validation':
-            test_data = np.load(data_path + 'validation_data.npy')
-            test_ages = np.load(data_path + 'validation_ages.npy')
-        else:
-            test_data = np.load(data_path + 'test_data.npy')
-            test_ages = np.load(data_path + 'test_ages.npy')
-
-        batch_set = BatchSet(test_data, test_ages)
-
-        if use_cpu:
-            num_workers = 0
-            pin_memory = False
-        else:
-            num_workers = 2
-            pin_memory = True
-        data_loader = DataLoader(dataset=batch_set,
-                                 batch_size=batch_size,
-                                 shuffle=True,
-                                 num_workers=num_workers,
-                                 pin_memory=pin_memory)
+        print('Test model.', 'Mode:', self._mode)
 
         baseline_net_file_name = 'baseline_net_%d.pkl' % (model_epoch)
-        if os.path.exists(expt_path + baseline_net_file_name):
+        if os.path.exists(self._expt_path + baseline_net_file_name):
             print('Construct baseline_net. Load from pkl file.')
-            baseline_net = torch.load(expt_path + baseline_net_file_name)
+            baseline_net = torch.load(self._expt_path + baseline_net_file_name)
         else:
             raise Exception('No such model file.')
 
         baseline_net.float()
         baseline_net.eval()
-        if use_cpu is False:
+        if self._use_cpu is False:
             cudnn.enabled = True
             baseline_net.cuda()
         else:
@@ -160,12 +153,12 @@ class BaselineModel:
 
         test_res = None
 
-        for batch_id, sample in enumerate(data_loader):
+        for batch_id, sample in enumerate(self._data_loader):
 
             data = sample['data'].unsqueeze(dim=1).float()
             age = sample['age'].float().numpy()
 
-            if use_cpu is False:
+            if self._use_cpu is False:
                 data = data.cuda()
 
             data = Variable(data)
@@ -181,7 +174,7 @@ class BaselineModel:
                 test_res = np.r_[test_res, batch_res]
 
         test_res = test_res[test_res[:,0].argsort()]
-        np.save(expt_path + 'baseline_test_result.npy', np.array(test_res))
+        np.save(self._expt_path + self._mode + 'baseline_test_result.npy', np.array(test_res))
         print(test_res)
 
         abs_error = abs(test_res[:,2])
@@ -191,4 +184,4 @@ class BaselineModel:
 
         print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f. ' % (test_res.shape[0], MAE, CI_75, CI_95))
 
-        utils.plot_scatter(test_res, CI_75, CI_95, expt_path, mode + '_baseline_' + str(model_epoch))
+        utils.plot_scatter(test_res, CI_75, CI_95, self._expt_path, self._mode + '_baseline_' + str(model_epoch))
