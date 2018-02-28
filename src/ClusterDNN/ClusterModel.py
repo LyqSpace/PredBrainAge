@@ -11,68 +11,129 @@ from torch.utils.data import DataLoader
 
 from src.ClusterDNN.BatchSet import BatchSet
 from src.ClusterDNN.ClusterNet import create_cluster_net
+from src.ClusterDNN.ClusterLoss import ClusterLoss
 import src.utils as utils
 from src.Logger import Logger
 
 
 class ClusterModel:
 
-    def __init__(self):
-        np.set_printoptions(precision=3, suppress=True)
-        pass
+    def __init__(self, data_path, mode, use_cpu):
 
-    @staticmethod
-    def train(data_path, retrain, use_cpu, st_epoch=0):
+        print('Construct cluster model.')
 
-        print('Train Dataset.')
+        np.set_printoptions(precision=3, suppress=True, threshold=2000)
 
-        expt_path = 'expt/'
-        max_epoches = 100000
-        batch_size = 16
-        lr0 = 1e-2
-        lr_shirnk_step = 5000
-        lr_shrink_gamma = 0.5
+        self._use_cpu = use_cpu
+        self._mode = mode
+        self._expt_path = 'expt/cluster/'
 
-        training_data = np.load(data_path + 'training_data.npy')
-        training_ages = np.load(data_path + 'training_ages.npy')
+        self._cluster_st = 21
+        self._cluster_ed = 82
+        self._cluster_step = 3
+        self._clusters = np.arange(self._cluster_st, self._cluster_ed, self._cluster_step)
+        self._cluster_num = self._clusters.shape[0]
+        self._feature_size = 64
 
-        batch_set = BatchSet(training_data, training_ages)
+        if not os.path.exists('expt/'):
+            os.mkdir('expt/')
+        if not os.path.exists(self._expt_path):
+            os.mkdir(self._expt_path)
+
+        if mode == 'training':
+            data = np.load(data_path + 'training_data.npy')
+            ages = np.load(data_path + 'training_ages.npy')
+        elif mode == 'validation':
+            data = np.load(data_path + 'validation_data.npy')
+            ages = np.load(data_path + 'validation_ages.npy')
+        elif mode == 'test':
+            data = np.load(data_path + 'test_data.npy')
+            ages = np.load(data_path + 'test_ages.npy')
+        else:
+            raise Exception('mode must be in [training, validation, test].')
+
+        batch_set = BatchSet(data, ages)
 
         if use_cpu:
             num_workers = 0
             pin_memory = False
         else:
-            num_workers = 2
+            num_workers = 0
             pin_memory = True
-        data_loader = DataLoader(dataset=batch_set,
-                                 batch_size=batch_size,
-                                 shuffle=True,
-                                 num_workers=num_workers,
-                                 pin_memory=pin_memory)
 
-        if (st_epoch-1) < 0 or retrain:
-            print('Construct cluster model. Create a new network.')
-            cluster_net = create_cluster_net()
+        batch_size = 16
+
+        self._data_loader = DataLoader(dataset=batch_set,
+                                       batch_size=batch_size,
+                                       shuffle=True,
+                                       num_workers=num_workers,
+                                       pin_memory=pin_memory)
+
+        if cudnn.version() is None:
+            cudnn.enabled = False
+
+    def load_pretrain(self, pretrain_model):
+
+        expt_baseline_path = 'expt/baseline/'
+        baseline_net_file = expt_baseline_path + 'baseline_net_' + str(pretrain_model) + '.pkl'
+
+        cluster_net = create_cluster_net()
+
+        if os.path.exists(baseline_net_file):
+            baseline_net = torch.load(baseline_net_file)
+            cluster_net.load_state_dict(baseline_net.state_dict(), strict=False)
+
+        torch.save(cluster_net, self._expt_path + 'cluster_net_pretrain.pkl')
+
+    def _calc_drift(self, data):
+
+        data_sum = data.sum(axis=0)
+
+        drift = np.zeros(data.shape)
+        for i in range(drift.shape[0]):
+            data_other = (data_sum - data[i,:]) / (data.shape[0] - 1)
+            drift[i] = data[i,:] - data_other
+            drift_norm = np.sum(drift[i] ** 2) ** 0.5
+            drift[i] /= drift_norm
+
+        return drift
+
+    def train(self, st_epoch=0):
+
+        print('Train Dataset.')
+
+        max_epoches = 10000
+        lr0 = 1e-1
+        lr_shirnk_step = 100
+        lr_shrink_gamma = 0.5
+
+        if st_epoch == 0:
+            print('Construct cluster model. Load from pretrain net.')
+            cluster_net = torch.load(self._expt_path + 'cluster_net_pretrain.pkl')
+            feature_cog = None
         else:
-            cluster_net_file_name = 'cluster_net_%d.pkl' % (st_epoch-1)
-            if os.path.exists(expt_path + cluster_net_file_name):
+            cluster_net_file_name = 'cluster_net_%d.pkl' % (st_epoch - 1)
+            cluster_cog_file_name = 'cluster_cog_%d.npy' % (st_epoch - 1)
+            if os.path.exists(self._expt_path + cluster_net_file_name):
                 print('Construct cluster model. Load from pkl file.')
-                cluster_net = torch.load(expt_path + cluster_net_file_name)
+                cluster_net = torch.load(self._expt_path + cluster_net_file_name)
+                feature_cog = np.load(self._expt_path + cluster_cog_file_name)
             else:
-                print('Construct cluster model. Create a new network.')
-                cluster_net = create_cluster_net()
+                print('Construct cluster model. Load from pretrain net.')
+                cluster_net = torch.load(self._expt_path + 'cluster_net_pretrain.pkl')
+                feature_cog = None
 
         cluster_net.float()
         cluster_net.train()
-        if use_cpu is False:
-            cudnn.enabled = True
+        if not self._use_cpu:
             cluster_net.cuda()
         else:
-            cudnn.enabled = False
+            cluster_net.cpu()
 
         lr = lr0 * lr_shrink_gamma ** (st_epoch // lr_shirnk_step)
 
-        criterion = nn.MSELoss()
+        # criterion = nn.MSELoss()
+        criterion = ClusterLoss(self._cluster_num, self._feature_size, self._use_cpu)
         optimizer = optim.RMSprop(cluster_net.parameters(), lr=lr, alpha=0.9)
         # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_shirnk_step, gamma=lr_shrink_gamma)
@@ -82,90 +143,106 @@ class ClusterModel:
         for epoch in range(st_epoch, max_epoches):
 
             running_loss = 0
+            MAE = 0
+            cluster_w = np.zeros(self._cluster_num)
+            new_feature_cog = np.zeros((self._cluster_num, self._feature_size))
 
-            for batch_id, sample in enumerate(data_loader):
+            if feature_cog is not None:
+                print('last')
+                print(feature_cog[:, :3])
 
-                data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].unsqueeze(dim=1).float()
+                drift = self._calc_drift(feature_cog)
+                feature_cog += drift * 10
 
-                if use_cpu is False:
-                    data, age = data.cuda(), age.cuda()
+                feature_cog_var = Variable(torch.from_numpy(feature_cog).float(), requires_grad=False)
+                if not self._use_cpu:
+                    feature_cog_var = feature_cog_var.cuda()
 
-                data, age = Variable(data), Variable(age)
 
-                predicted_age = cluster_net(data)
+            for batch_id, sample in enumerate(self._data_loader):
 
-                loss = criterion(predicted_age, age)
-                optimizer.zero_grad()
-                loss.backward()
-                scheduler.step()
-                optimizer.step()
+                data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].float().numpy()
+                if not self._use_cpu:
+                    data = data.cuda()
+                data = Variable(data)
 
-                running_loss += loss.data[0]
+                w = np.exp(-((age - self._clusters) / 1.5) ** 2)  # 16x21
+                cluster_w += w.sum(axis=0)  # 21x1
 
-                message = 'Epoch: %d, Batch: %d, Loss: %.3f, Epoch Loss: %.3f' % \
-                          (epoch, batch_id, loss.data[0], running_loss / (batch_id+1))
-                print(message)
-                logger.log(message)
+                if feature_cog is not None:
 
-                comp_res = np.c_[age.data.cpu().numpy()[:, :, 0], predicted_age.data.cpu().numpy()]
-                print(comp_res)
-                logger.log(comp_res)
+                    feature_vec = cluster_net(data)
 
-            torch.save(cluster_net, expt_path + 'cluster_net_%d.pkl' % epoch)
+                    for i in range(w.shape[0]):
+                        if age[i] < 23:
+                            print('pre', age[i], feature_vec[i, 0].cpu().data.numpy()[0])
 
-    @staticmethod
-    def test(data_path, model_epoch, mode, use_cpu):
+                    w_norm = w.sum(axis=1).repeat(self._cluster_num).reshape(w.shape[0], self._cluster_num)  # 16x21
+                    normalized_w = w / w_norm
 
-        print('Test model.', data_path, 'Mode:', mode)
+                    normalized_w_var = Variable(torch.from_numpy(normalized_w).float(), requires_grad=False)
 
-        expt_path = 'expt/'
-        batch_size = 16
+                    if not self._use_cpu:
+                        normalized_w_var = normalized_w_var.cuda()
 
-        if mode == 'validation':
-            test_data = np.load(data_path + 'validation_data.npy')
-            test_ages = np.load(data_path + 'validation_ages.npy')
-        else:
-            test_data = np.load(data_path + 'test_data.npy')
-            test_ages = np.load(data_path + 'test_ages.npy')
+                    loss = criterion(feature_vec, normalized_w_var, feature_cog_var)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
-        batch_set = BatchSet(test_data, test_ages)
+                    running_loss += loss.data[0]
 
-        if use_cpu:
-            num_workers = 0
-            pin_memory = False
-        else:
-            num_workers = 2
-            pin_memory = True
-        data_loader = DataLoader(dataset=batch_set,
-                                 batch_size=batch_size,
-                                 shuffle=True,
-                                 num_workers=num_workers,
-                                 pin_memory=pin_memory)
+                    message = 'Epoch: %d, Batch: %d, Loss: %.3f, Epoch Loss: %.3f' % \
+                              (epoch, batch_id, loss.data[0], running_loss / (batch_id + 1))
+                    # print(message)
+                    logger.log(message)
 
-        cluster_net_file_name = 'cluster_net_%d.pkl' % (model_epoch)
-        if os.path.exists(expt_path + cluster_net_file_name):
+                feature_vec = cluster_net(data)
+
+                feature_vec = feature_vec.data.cpu().numpy()  # 16x64
+
+                for i in range(w.shape[0]):
+                    if age[i] < 23:
+                        print('after', age[i], feature_vec[i, 0])
+                new_feature_cog += w.T.dot(feature_vec) # 21x64
+
+            scheduler.step()
+
+            cluster_w = cluster_w.repeat(self._feature_size).reshape(self._cluster_num, self._feature_size) # 21x64
+            feature_cog = new_feature_cog / cluster_w # 21x64
+
+            # print('cur')
+            # print(feature_cog[:,:3])
+
+            torch.save(cluster_net, self._expt_path + 'cluster_net_%d.pkl' % epoch)
+            np.save(self._expt_path + 'cluster_cog_%d.npy' % epoch, feature_cog)
+
+    def test(self, model_epoch):
+
+        print('Test model.', 'Mode:', self._mode)
+
+        cluster_net_file_name = 'cluster_net_%d.pkl' % model_epoch
+        if os.path.exists(self._expt_path + cluster_net_file_name):
             print('Construct cluster_net. Load from pkl file.')
-            cluster_net = torch.load(expt_path + cluster_net_file_name)
+            cluster_net = torch.load(self._expt_path + cluster_net_file_name)
         else:
             raise Exception('No such model file.')
 
         cluster_net.float()
         cluster_net.eval()
-        if use_cpu is False:
-            cudnn.enabled = True
+        if not self._use_cpu:
             cluster_net.cuda()
         else:
-            cudnn.enabled = False
             cluster_net.cpu()
 
         test_res = None
 
-        for batch_id, sample in enumerate(data_loader):
+        for batch_id, sample in enumerate(self._data_loader):
 
             data = sample['data'].unsqueeze(dim=1).float()
             age = sample['age'].float().numpy()
 
-            if use_cpu is False:
+            if self._use_cpu is False:
                 data = data.cuda()
 
             data = Variable(data)
@@ -180,15 +257,15 @@ class ClusterModel:
             else:
                 test_res = np.r_[test_res, batch_res]
 
-        test_res = test_res[test_res[:,0].argsort()]
-        np.save(expt_path + 'cluster_test_result.npy', np.array(test_res))
+        test_res = test_res[test_res[:, 0].argsort()]
+        np.save(self._expt_path + self._mode + 'cluster_test_result.npy', np.array(test_res))
         print(test_res)
 
-        abs_error = abs(test_res[:,2])
+        abs_error = abs(test_res[:, 2])
         MAE = abs_error.mean()
         CI_75 = np.percentile(abs_error, 75)
         CI_95 = np.percentile(abs_error, 95)
 
         print('Test size: %d, MAE: %.3f, CI 75%%: %.3f, CI 95%%: %.3f. ' % (test_res.shape[0], MAE, CI_75, CI_95))
 
-        utils.plot_scatter(test_res, CI_75, CI_95, expt_path, mode + '_cluster_' + str(model_epoch))
+        utils.plot_scatter(test_res, CI_75, CI_95, self._expt_path, self._mode + '_cluster_' + str(model_epoch))

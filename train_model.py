@@ -42,6 +42,18 @@ def get_user_params():
         err_messages = []
         check_opts = True
 
+        if baseline:
+            if pretrain_model > 0:
+                err = '--baseline and --pretrain_model can not be used at the same time.'
+                err_messages.append(err)
+        else:
+            if pretrain_model > 0 and st_epoch > 0:
+                err = '--pretrain_model and --st_epoch can not be used at the same time.'
+                err_messages.append(err)
+            if pretrain_model > 0 and st_epoch < 0:
+                err = '--pretrain_model and --st_epoch can not be negative at the same time.'
+                err_messages.append(err)
+
         if check_opts:
             user_params = {
                 'st_epoch': st_epoch,
@@ -70,6 +82,8 @@ def main(use_cpu, baseline, st_epoch, pretrain_model):
         model = BaselineModel(data_path, mode='training', use_cpu=use_cpu)
     else:
         model = ClusterModel(data_path, mode='training', use_cpu=use_cpu)
+        if st_epoch == 0:
+            model.load_pretrain(pretrain_model)
 
     model.train(st_epoch=st_epoch)
 

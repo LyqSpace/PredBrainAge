@@ -19,6 +19,8 @@ class BaselineModel:
 
     def __init__(self, data_path, mode, use_cpu):
 
+        print('Construct baseline model.')
+
         np.set_printoptions(precision=3, suppress=True)
 
         self._use_cpu = use_cpu
@@ -48,7 +50,7 @@ class BaselineModel:
             num_workers = 0
             pin_memory = False
         else:
-            num_workers = 2
+            num_workers = 0 # local 0, server 2
             pin_memory = True
 
         batch_size = 16
@@ -59,13 +61,16 @@ class BaselineModel:
                                  num_workers=num_workers,
                                  pin_memory=pin_memory)
 
+        if cudnn.version() is None:
+            cudnn.enabled = False
+
     def train(self, st_epoch=0):
 
         print('Train Dataset.')
 
-        max_epoches = 100000
+        max_epoches = 10000
         lr0 = 1e-2
-        lr_shirnk_step = 5000
+        lr_shirnk_step = 1000
         lr_shrink_gamma = 0.5
 
         if st_epoch < 1:
@@ -82,11 +87,10 @@ class BaselineModel:
 
         baseline_net.float()
         baseline_net.train()
-        if self._use_cpu is False:
-            cudnn.enabled = True
+        if not self._use_cpu:
             baseline_net.cuda()
         else:
-            cudnn.enabled = False
+            baseline_net.cpu()
 
         lr = lr0 * lr_shrink_gamma ** (st_epoch // lr_shirnk_step)
 
@@ -103,7 +107,7 @@ class BaselineModel:
 
             for batch_id, sample in enumerate(self._data_loader):
 
-                data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].unsqueeze(dim=1).float()
+                data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].float()
 
                 if self._use_cpu is False:
                     data, age = data.cuda(), age.cuda()
@@ -115,7 +119,6 @@ class BaselineModel:
                 loss = criterion(predicted_age, age)
                 optimizer.zero_grad()
                 loss.backward()
-                scheduler.step()
                 optimizer.step()
 
                 running_loss += loss.data[0]
@@ -125,9 +128,11 @@ class BaselineModel:
                 print(message)
                 logger.log(message)
 
-                comp_res = np.c_[age.data.cpu().numpy()[:, :, 0], predicted_age.data.cpu().numpy()]
+                comp_res = np.c_[age.data.cpu().numpy()[:, 0], predicted_age.data.cpu().numpy()]
                 print(comp_res)
                 logger.log(comp_res)
+
+            scheduler.step()
 
             torch.save(baseline_net, self._expt_path + 'baseline_net_%d.pkl' % epoch)
 
@@ -144,11 +149,9 @@ class BaselineModel:
 
         baseline_net.float()
         baseline_net.eval()
-        if self._use_cpu is False:
-            cudnn.enabled = True
+        if not self._use_cpu:
             baseline_net.cuda()
         else:
-            cudnn.enabled = False
             baseline_net.cpu()
 
         test_res = None
