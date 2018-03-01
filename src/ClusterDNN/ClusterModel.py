@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader
 
 from src.ClusterDNN.BatchSet import BatchSet
 from src.ClusterDNN.ClusterNet import create_cluster_net
-from src.ClusterDNN.ClusterLoss import ClusterLoss
 import src.utils as utils
 from src.Logger import Logger
 
@@ -103,9 +102,10 @@ class ClusterModel:
         print('Train Dataset.')
 
         max_epoches = 10000
-        lr0 = 1e-1
+        lr0 = 1e-2
         lr_shirnk_step = 100
         lr_shrink_gamma = 0.5
+        drift_force = 5
 
         if st_epoch == 0:
             print('Construct cluster model. Load from pretrain net.')
@@ -132,8 +132,7 @@ class ClusterModel:
 
         lr = lr0 * lr_shrink_gamma ** (st_epoch // lr_shirnk_step)
 
-        # criterion = nn.MSELoss()
-        criterion = ClusterLoss(self._cluster_num, self._feature_size, self._use_cpu)
+        criterion = nn.MSELoss()
         optimizer = optim.RMSprop(cluster_net.parameters(), lr=lr, alpha=0.9)
         # optimizer = optim.SGD(net.parameters(), lr=st_lr, momentum=0.9)
         scheduler = lr_scheduler.StepLR(optimizer, step_size=lr_shirnk_step, gamma=lr_shrink_gamma)
@@ -142,22 +141,72 @@ class ClusterModel:
 
         for epoch in range(st_epoch, max_epoches):
 
-            running_loss = 0
-            MAE = 0
-            cluster_w = np.zeros(self._cluster_num)
-            new_feature_cog = np.zeros((self._cluster_num, self._feature_size))
+            # Update cluster net
 
             if feature_cog is not None:
-                print('last')
-                print(feature_cog[:, :3])
+
+                message = 'Epoch: %d. Update cluster net.' % epoch
+                print(message)
+                logger.log(message)
+
+                running_loss = 0
+                MAE = 0
 
                 drift = self._calc_drift(feature_cog)
-                feature_cog += drift * 10
+                feature_cog += drift * drift_force
 
-                feature_cog_var = Variable(torch.from_numpy(feature_cog).float(), requires_grad=False)
-                if not self._use_cpu:
-                    feature_cog_var = feature_cog_var.cuda()
+                for batch_id, sample in enumerate(self._data_loader):
 
+                    data, age = sample['data'].unsqueeze(dim=1).float(), sample['age'].float().numpy()
+                    if not self._use_cpu:
+                        data = data.cuda()
+                    data = Variable(data)
+
+                    w = np.exp(-((age - self._clusters) / 1.5) ** 2)  # 16x21
+                    w_norm = w.sum(axis=1).repeat(self._cluster_num).reshape(w.shape[0], self._cluster_num)  # 16x21
+                    normalized_w = w / w_norm
+
+                    expected_vec = normalized_w.dot(feature_cog)
+                    expected_vec = Variable(torch.from_numpy(expected_vec).float(), requires_grad=False)
+                    if not self._use_cpu:
+                        expected_vec = expected_vec.cuda()
+
+                    feature_vec = cluster_net(data)
+
+                    loss = criterion(feature_vec, expected_vec)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+
+                    running_loss += loss.data[0]
+
+                    feature_vec = feature_vec.cpu().data.numpy()
+                    predicted_age = np.zeros(age.shape)
+
+                    for i in range(feature_vec.shape[0]):
+                        vec_diff = feature_vec[i] - feature_cog
+                        best_cluster = np.sum(np.abs(vec_diff), axis=1).argmin()
+                        predicted_age[i] = self._cluster_st + best_cluster * self._cluster_step
+
+                    comp_age = np.c_[age, predicted_age, predicted_age - age]
+                    error = np.abs(comp_age[:,2]).mean()
+                    MAE += error
+                    message = '  Batch: %d, AE: %.3f, MAE: %.3f, Loss: %.3f, Epoch Loss: %.3f' % \
+                              (batch_id, error, MAE / (batch_id + 1), loss.data[0], running_loss / (batch_id + 1))
+                    print(message)
+                    print(comp_age)
+                    logger.log(message)
+
+            scheduler.step()
+
+            # Update features center of gravity
+
+            message = 'Epoch: %d. Update features center of gravity.' % epoch
+            print(message)
+            logger.log(message)
+
+            cluster_w = np.zeros(self._cluster_num)
+            new_feature_cog = np.zeros((self._cluster_num, self._feature_size))
 
             for batch_id, sample in enumerate(self._data_loader):
 
@@ -169,53 +218,21 @@ class ClusterModel:
                 w = np.exp(-((age - self._clusters) / 1.5) ** 2)  # 16x21
                 cluster_w += w.sum(axis=0)  # 21x1
 
-                if feature_cog is not None:
+                feature_vec = cluster_net(data) # 16x64
 
-                    feature_vec = cluster_net(data)
-
-                    for i in range(w.shape[0]):
-                        if age[i] < 23:
-                            print('pre', age[i], feature_vec[i, 0].cpu().data.numpy()[0])
-
-                    w_norm = w.sum(axis=1).repeat(self._cluster_num).reshape(w.shape[0], self._cluster_num)  # 16x21
-                    normalized_w = w / w_norm
-
-                    normalized_w_var = Variable(torch.from_numpy(normalized_w).float(), requires_grad=False)
-
-                    if not self._use_cpu:
-                        normalized_w_var = normalized_w_var.cuda()
-
-                    loss = criterion(feature_vec, normalized_w_var, feature_cog_var)
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-
-                    running_loss += loss.data[0]
-
-                    message = 'Epoch: %d, Batch: %d, Loss: %.3f, Epoch Loss: %.3f' % \
-                              (epoch, batch_id, loss.data[0], running_loss / (batch_id + 1))
-                    # print(message)
-                    logger.log(message)
-
-                feature_vec = cluster_net(data)
-
-                feature_vec = feature_vec.data.cpu().numpy()  # 16x64
-
-                for i in range(w.shape[0]):
-                    if age[i] < 23:
-                        print('after', age[i], feature_vec[i, 0])
-                new_feature_cog += w.T.dot(feature_vec) # 21x64
-
-            scheduler.step()
+                feature_vec = feature_vec.cpu().data.numpy()
+                new_feature_cog += w.T.dot(feature_vec)  # 21x64
 
             cluster_w = cluster_w.repeat(self._feature_size).reshape(self._cluster_num, self._feature_size) # 21x64
             feature_cog = new_feature_cog / cluster_w # 21x64
-
-            # print('cur')
-            # print(feature_cog[:,:3])
+            print(feature_cog[:,:3])
 
             torch.save(cluster_net, self._expt_path + 'cluster_net_%d.pkl' % epoch)
             np.save(self._expt_path + 'cluster_cog_%d.npy' % epoch, feature_cog)
+
+            message = 'Epoch: %d. cluster_net.pkl and cluster_cog.npy saved.' % epoch
+            print(message)
+            logger.log(message)
 
     def test(self, model_epoch):
 
