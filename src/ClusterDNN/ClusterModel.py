@@ -78,7 +78,7 @@ class ClusterModel:
 
         cluster_net = create_cluster_net()
 
-        if os.path.exists(baseline_net_file):
+        if pretrain_model > 0 and os.path.exists(baseline_net_file):
             baseline_net = torch.load(baseline_net_file)
             cluster_net.load_state_dict(baseline_net.state_dict(), strict=False)
 
@@ -108,19 +108,22 @@ class ClusterModel:
         drift_force = 5
 
         if st_epoch == 0:
-            print('Construct cluster model. Load from pretrain net.')
+            print('Construct cluster model from pretrain net.')
             cluster_net = torch.load(self._expt_path + 'cluster_net_pretrain.pkl')
+            print('Create new feature center of gravity.')
             feature_cog = None
         else:
             cluster_net_file_name = 'cluster_net_%d.pkl' % (st_epoch - 1)
             cluster_cog_file_name = 'cluster_cog_%d.npy' % (st_epoch - 1)
             if os.path.exists(self._expt_path + cluster_net_file_name):
-                print('Construct cluster model. Load from pkl file.')
+                print('Construct cluster model from pkl file.')
                 cluster_net = torch.load(self._expt_path + cluster_net_file_name)
+                print('Construct feature center of gravity from npy file.')
                 feature_cog = np.load(self._expt_path + cluster_cog_file_name)
             else:
-                print('Construct cluster model. Load from pretrain net.')
+                print('Construct cluster model from pretrain net.')
                 cluster_net = torch.load(self._expt_path + 'cluster_net_pretrain.pkl')
+                print('Create new feature center of gravity.')
                 feature_cog = None
 
         cluster_net.float()
