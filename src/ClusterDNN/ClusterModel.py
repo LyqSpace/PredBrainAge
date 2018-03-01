@@ -105,7 +105,7 @@ class ClusterModel:
         lr0 = 1e-2
         lr_shirnk_step = 100
         lr_shrink_gamma = 0.5
-        drift_force = 5
+        drift_force = 1
 
         if st_epoch == 0:
             print('Construct cluster model from pretrain net.')
@@ -156,7 +156,7 @@ class ClusterModel:
                 MAE = 0
 
                 drift = self._calc_drift(feature_cog)
-                feature_cog += drift * drift_force
+                feature_cog_drifted = feature_cog + drift * drift_force
 
                 for batch_id, sample in enumerate(self._data_loader):
 
@@ -169,7 +169,7 @@ class ClusterModel:
                     w_norm = w.sum(axis=1).repeat(self._cluster_num).reshape(w.shape[0], self._cluster_num)  # 16x21
                     normalized_w = w / w_norm
 
-                    expected_vec = normalized_w.dot(feature_cog)
+                    expected_vec = normalized_w.dot(feature_cog_drifted)
                     expected_vec = Variable(torch.from_numpy(expected_vec).float(), requires_grad=False)
                     if not self._use_cpu:
                         expected_vec = expected_vec.cuda()
