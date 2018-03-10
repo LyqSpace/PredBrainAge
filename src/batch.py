@@ -5,6 +5,7 @@ from nilearn.datasets import load_mni152_template
 import nibabel.affines as ni_affine
 import re
 import numpy as np
+import pandas as pd
 from scipy import ndimage
 
 
@@ -144,8 +145,9 @@ def normalize_npy(file_name=None):
 
         data = np.load(path + name)
 
-        # resized_data = ndimage.zoom(data, (0.5, 0.5, 0.5))
-        resized_data = data
+        resized_data = ndimage.zoom(data, (0.967, 0.9908, 0.967))
+        print(resized_data.shape)
+        # resized_data = data
         # new_data = (data - data.mean()) / data.std()
         new_data = (resized_data - resized_data.mean()) / resized_data.std()
 
@@ -169,6 +171,51 @@ def rename():
         np.save(path+str(i-1)+'.npy', x)
 
 
+def transfer_to_txt():
+    data_path = 'data/'
+    dataset_name = 'IXI-T1'
+
+    xls_file = pd.read_excel(data_path + dataset_name + '.xls')
+    universe_df = xls_file.loc[:, ['IXI_ID', 'AGE']]
+    universe_df.dropna(how='any', inplace=True)
+    # universe_df.index = universe_df['IXI_ID']
+    # universe_df.drop('IXI_ID', axis=1, inplace=True)
+
+    for i in range(universe_df.shape[0]):
+        print(i)
+
+        row_series = universe_df.iloc[i]
+        data_id = str(int(row_series['IXI_ID']))
+        age = row_series['AGE']
+        data = np.load(data_path + dataset_name + '/' + data_id + '.npy')
+
+        file = open('D:/IXI-T1-txt/' + data_id + '.txt', 'w')
+        file.write('91 109 91 %.2f\n' % age)
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                for k in range(data.shape[2]):
+                    file.write('%d %d %d %.4f\n' % (i, j, k, data[i,j,k]))
+        file.close()
+        pass
+
+
+def resize_npy(file_name=None):
+    path = '../data/IXI-T1/'
+    data_name_list = os.listdir(path)
+    count = 0
+    for name in data_name_list:
+        print(count)
+        count += 1
+
+        if file_name is not None and file_name != name:
+            continue
+
+        data = np.load(path + name)
+        resized_data = ndimage.zoom(data, (0.967, 0.9908, 0.967))
+        print(resized_data.shape)
+        np.save('../data/IXI-T1/' + name, resized_data)
+
+
 if __name__ == '__main__':
     # delete_data(533)
     # normalize_npy()
@@ -176,4 +223,7 @@ if __name__ == '__main__':
     # resize_data()
     normalize_npy()
     # rename()
+
+    # transfer_to_txt()
+    # resize_npy()
     pass

@@ -1,9 +1,6 @@
-import os
 from optparse import OptionParser
-
-from src.Logger import Logger
-from src.ClusterDNN.ClusterModel import ClusterModel
-from src.ClusterDNN.BaselineModel import BaselineModel
+from src.SparseDict.Database import Database
+from src.SparseDict.SparseDict import SparseDict
 
 
 def get_user_params():
@@ -15,51 +12,31 @@ def get_user_params():
                         dest='cpu',
                         default=False,
                         help='Train the model by cpu.')
-        opts.add_option('--baseline',
-                        action='store_true',
-                        dest='baseline',
-                        default=False,
-                        help='Train the baseline model.')
         opts.add_option('--st_epoch',
                         action='store',
                         type='int',
                         default=0,
                         dest='st_epoch',
                         help='Input the start epoch and load net from the file.')
-        opts.add_option('--pretrain_model',
-                        action='store',
-                        type='int',
-                        default=0,
-                        dest='pretrain_model',
-                        help='Input the epoch of baseline model as the pretrain net from the file.')
+        opts.add_option('--resample',
+                        action='store_true',
+                        dest='resample',
+                        default=False,
+                        help='Resample the dataset.')
 
         options, args = opts.parse_args()
         use_cpu = options.cpu
-        baseline = options.baseline
         st_epoch = options.st_epoch
-        pretrain_model = options.pretrain_model
+        resample = options.resample
 
         err_messages = []
         check_opts = True
-
-        if baseline:
-            if pretrain_model > 0:
-                err = '--baseline and --pretrain_model can not be used at the same time.'
-                err_messages.append(err)
-        else:
-            if pretrain_model > 0 and st_epoch > 0:
-                err = '--pretrain_model and --st_epoch can not be used at the same time.'
-                err_messages.append(err)
-            if pretrain_model > 0 and st_epoch < 0:
-                err = '--pretrain_model and --st_epoch can not be negative at the same time.'
-                err_messages.append(err)
 
         if check_opts:
             user_params = {
                 'st_epoch': st_epoch,
                 'use_cpu': use_cpu,
-                'baseline': baseline,
-                'pretrain_model': pretrain_model
+                'resample': resample
             }
             return user_params
         else:
@@ -73,19 +50,19 @@ def get_user_params():
         return None
 
 
-def main(use_cpu, baseline, st_epoch, pretrain_model):
+def main(use_cpu, st_epoch, resample):
 
     data_path = 'data/'
+    expt_path = 'expt/'
     dataset_name = 'IXI-T1'
 
-    if baseline:
-        model = BaselineModel(data_path, mode='training', use_cpu=use_cpu)
-    else:
-        model = ClusterModel(data_path, mode='training', use_cpu=use_cpu)
-        if st_epoch == 0:
-            model.load_pretrain(pretrain_model)
+    database = Database()
+    database.integrate_data(data_path, dataset_name, resample)
 
-    model.train(st_epoch=st_epoch)
+    sparse_dict = SparseDict(data_path, expt_path, n_components=128, mode='training')
+    sparse_dict.fit()
+
+    # model.train(st_epoch=st_epoch)
 
 
 if __name__ == '__main__':
@@ -94,8 +71,7 @@ if __name__ == '__main__':
 
     if user_params is not None:
         main(use_cpu=user_params['use_cpu'],
-             baseline = user_params['baseline'],
              st_epoch=user_params['st_epoch'],
-             pretrain_model = user_params['pretrain_model'])
+             resample=user_params['resample'])
     else:
         raise Exception('User params are wrong.')

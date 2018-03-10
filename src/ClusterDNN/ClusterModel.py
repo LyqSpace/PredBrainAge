@@ -79,8 +79,11 @@ class ClusterModel:
         cluster_net = create_cluster_net()
 
         if pretrain_model > 0 and os.path.exists(baseline_net_file):
+            print('Initialize cluster net from baseline model.')
             baseline_net = torch.load(baseline_net_file)
             cluster_net.load_state_dict(baseline_net.state_dict(), strict=False)
+        else:
+            print('Create a new cluster net.')
 
         torch.save(cluster_net, self._expt_path + 'cluster_net_pretrain.pkl')
 

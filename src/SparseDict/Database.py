@@ -104,6 +104,56 @@ class Database:
 
         return data_id, data, row_series['AGE']
 
+    def integrate_data(self, data_path, dataset_name, resample):
+
+        print('Integrate database.', data_path, dataset_name, 'Resample:', resample)
+
+        if not resample:
+            return
+
+        # Training
+        self.load_database(data_path, dataset_name, mode='training', resample=resample)
+
+        training_data = []
+        training_ages = []
+
+        while self.has_next_data():
+            data_name, data, age = self.get_next_data(required_data=True)
+            training_data.append(data)
+            training_ages.append(age)
+
+        np.save(data_path + 'training_data.npy', np.array(training_data))
+        np.save(data_path + 'training_ages.npy', np.array(training_ages))
+
+        # Validation
+        self.load_database(data_path, dataset_name, mode='validation')
+
+        validation_data = []
+        validation_ages = []
+
+        while self.has_next_data():
+            data_name, data, age = self.get_next_data(required_data=True)
+            validation_data.append(data)
+            validation_ages.append(age)
+
+        np.save(data_path + 'validation_data.npy', np.array(validation_data))
+        np.save(data_path + 'validation_ages.npy', np.array(validation_ages))
+
+        # Test
+        self.load_database(data_path, dataset_name, mode='test')
+
+        test_data = []
+        test_ages = []
+
+        while self.has_next_data():
+            data_name, data, age = self.get_next_data(required_data=True)
+            test_data.append(data)
+            test_ages.append(age)
+
+        np.save(data_path + 'test_data.npy', np.array(test_data))
+        np.save(data_path + 'test_ages.npy', np.array(test_ages))
+
+
 if __name__ == '__main__':
 
     database = Database()
